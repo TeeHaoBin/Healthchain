@@ -1,0 +1,87 @@
+/* Component-specific styles for HealthChain */
+
+/* Global gradient background */
+.gradient-bg {
+  @apply bg-gradient-to-br from-blue-50 via-white to-green-50;
+}
+
+/* Header backdrop blur */
+.header-backdrop {
+  @apply bg-white/80 backdrop-blur-sm sticky top-0 z-50;
+}
+
+/* Hero section styles */
+.hero-gradient {
+  @apply bg-gradient-to-r from-blue-400 to-green-400 rounded-lg blur-3xl opacity-30;
+}
+
+.security-gradient {
+  @apply bg-gradient-to-r from-green-400 to-blue-400 rounded-lg blur-3xl opacity-30;
+}
+
+/* Card hover effects */
+.feature-card {
+  @apply border-2 hover:border-blue-200 transition-colors;
+}
+
+.card-hover {
+  @apply hover:shadow-lg transition-shadow;
+}
+
+/* CTA section gradient */
+.cta-gradient {
+  @apply bg-gradient-to-r from-blue-50 to-green-50;
+}
+
+/* Stats section background */
+.stats-bg {
+  @apply bg-blue-600 text-white;
+}
+
+/* Button variants */
+.btn-primary {
+  @apply bg-blue-600 hover:bg-blue-700;
+}
+
+.btn-secondary {
+  @apply bg-green-600 hover:bg-green-700;
+}
+
+.btn-tertiary {
+  @apply bg-purple-600 hover:bg-purple-700;
+}
+
+/* Badge variants */
+.badge-blue {
+  @apply bg-blue-100 text-blue-800 hover:bg-blue-100;
+}
+
+.badge-green {
+  @apply bg-green-100 text-green-800 hover:bg-green-100;
+}
+
+/* Icon colors */
+.icon-blue { @apply text-blue-600; }
+.icon-green { @apply text-green-600; }
+.icon-purple { @apply text-purple-600; }
+.icon-yellow { @apply text-yellow-600; }
+.icon-red { @apply text-red-600; }
+.icon-indigo { @apply text-indigo-600; }
+
+/* Section spacing */
+.section-padding {
+  @apply w-full py-12 md:py-24 lg:py-32;
+}
+
+.container-padding {
+  @apply container px-4 md:px-6;
+}
+
+/* Step indicators */
+.step-indicator {
+  @apply flex h-16 w-16 items-center justify-center rounded-full text-white text-xl font-bold;
+}
+
+.step-1 { @apply bg-blue-600; }
+.step-2 { @apply bg-green-600; }
+.step-3 { @apply bg-purple-600; }
