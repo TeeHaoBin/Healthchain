@@ -12,7 +12,7 @@ export function FeaturesSection() {
             <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl text-gray-900">
               Revolutionizing Healthcare Through Decentralization
             </h2>
-            <p className="max-w-none md:max-w-4xl text-gray-600 text-base sm:text-lg md:text-xl leading-relaxed">
+            <p className="mx-auto max-w-3xl text-gray-600 text-base sm:text-lg md:text-xl leading-relaxed text-center">
               Our platform puts patients at the center of their healthcare journey with cutting-edge blockchain
               technology and user-centric design.
             </p>
