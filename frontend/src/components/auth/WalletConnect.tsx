@@ -49,8 +49,7 @@ export default function WalletConnect() {
         </div>
         <Button 
           onClick={() => disconnect()} 
-          variant="outline" 
-          className="w-full"
+          className="w-full bg-[#FF3131] hover:bg-[#E02828] text-white border-none"
         >
           <LogOut className="h-4 w-4 mr-2" />
           Disconnect Wallet
