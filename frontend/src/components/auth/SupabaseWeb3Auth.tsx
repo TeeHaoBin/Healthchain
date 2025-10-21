@@ -187,7 +187,7 @@ Issued At: ${new Date().toISOString()}`
           <Button 
             onClick={handleAuthenticate}
             disabled={isLoading}
-            className="w-full h-12 bg-[#0E76FD] hover:bg-[#00FF00] text-white rounded-2xl font-medium border-none animate-pulse hover:animate-none"
+            className="w-full h-12 bg-[#0E76FD] hover:bg-[#00FF00] text-white hover:text-black rounded-2xl font-medium border-none animate-pulse hover:animate-none"
             size="lg"
           >
             <Shield className="h-4 w-4 mr-2" />
