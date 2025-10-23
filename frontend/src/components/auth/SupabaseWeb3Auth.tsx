@@ -98,27 +98,47 @@ Issued At: ${new Date().toISOString()}`
 
       if (authResult?.user) {
         // User exists and is authenticated
-        // Create a session manually (simplified approach)
-        const { data: sessionData, error: sessionError } = await supabase.auth.signInWithPassword({
-          email: `${address.toLowerCase()}@web3.local`,
-          password: signature // Using signature as password (not recommended for production)
-        })
-
-        if (sessionError) {
-          // If sign in fails, this means we need to create the auth user
-          // For now, let's just set the user as authenticated
-          setAuthState({
-            step: 'complete',
-            user: existingUser,
-            isAuthenticated: true
-          })
-        } else {
-          setAuthState({
-            step: 'complete',
-            user: sessionData.user,
-            isAuthenticated: true
-          })
+        console.log('✅ User authenticated successfully:', existingUser)
+        
+        // Update last login timestamp
+        await updateLastLogin(existingUser.id)
+        
+        // Store auth state in localStorage
+        const authData = {
+          wallet: address,
+          user: existingUser,
+          timestamp: Date.now()
         }
+        console.log('💾 Saving auth to localStorage:', authData)
+        localStorage.setItem('healthchain_auth', JSON.stringify(authData))
+        
+        // Set authenticated state
+        setAuthState({
+          step: 'complete',
+          user: existingUser,
+          isAuthenticated: true
+        })
+        
+        // Redirect existing users to their dashboard
+        setTimeout(() => {
+          console.log('🔄 Redirecting existing user to dashboard for role:', existingUser.role)
+          let dashboardPath = '/dashboard'
+          
+          switch (existingUser.role) {
+            case 'patient':
+              dashboardPath = '/patient/dashboard'
+              break
+            case 'doctor':
+              dashboardPath = '/doctor/dashboard'
+              break
+            case 'admin':
+              dashboardPath = '/admin/dashboard'
+              break
+          }
+          
+          console.log('🔄 Using router.push to:', dashboardPath)
+          router.push(dashboardPath)
+        }, 1000)
       } else {
         // User doesn't exist, needs to register
         setAuthState(prev => ({ ...prev, step: 'register' }))
