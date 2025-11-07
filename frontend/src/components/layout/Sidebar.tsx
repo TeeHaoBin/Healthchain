@@ -125,7 +125,7 @@ export function Sidebar({ role }: SidebarProps) {
   }
 
   return (
-    <div className="flex h-screen w-64 flex-col border-r border-gray-200 bg-sidebar">
+    <div className="fixed left-0 top-0 z-40 flex h-screen w-64 flex-col border-r border-gray-200 bg-sidebar">
       {/* Logo/Header */}
       <div className="flex h-16 items-center border-b border-gray-200 px-6">
         <Link href="/" className="flex items-center gap-2">

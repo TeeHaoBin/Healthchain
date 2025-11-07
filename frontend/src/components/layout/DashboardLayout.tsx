@@ -39,9 +39,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="min-h-screen">
       <Sidebar role={role} />
-      <main className="flex-1 overflow-auto">
+      <main className="ml-64 min-h-screen">
         <div className="p-6">
           {children}
         </div>
