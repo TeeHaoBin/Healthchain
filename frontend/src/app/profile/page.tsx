@@ -4,7 +4,7 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout"
 import { useRole } from "@/hooks/useRole"
 
 export default function ProfilePage() {
-  const role = useRole()
+  const { role, user, isAuthenticated } = useRole()
 
   return (
     <DashboardLayout>
@@ -21,12 +21,20 @@ export default function ProfilePage() {
           <div className="space-y-4">
             <div>
               <label className="text-sm font-medium">Role</label>
-              <p className="text-sm text-muted-foreground capitalize">{role}</p>
+              <p className="text-sm text-muted-foreground capitalize">{role || "Loading..."}</p>
             </div>
             <div>
               <label className="text-sm font-medium">Status</label>
-              <p className="text-sm text-muted-foreground">Active</p>
+              <p className="text-sm text-muted-foreground">
+                {isAuthenticated ? "Active" : "Not authenticated"}
+              </p>
             </div>
+            {user && (
+              <div>
+                <label className="text-sm font-medium">User ID</label>
+                <p className="text-sm text-muted-foreground">{user.id || "N/A"}</p>
+              </div>
+            )}
           </div>
         </div>
 
