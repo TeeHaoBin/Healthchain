@@ -23,6 +23,7 @@ export default function PatientRecordsPage() {
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [filterType, setFilterType] = useState("all")
+  const [viewingId, setViewingId] = useState<string | null>(null)
 
   useEffect(() => {
     async function fetchRecords() {
@@ -47,9 +48,28 @@ export default function PatientRecordsPage() {
     fetchRecords()
   }, [isConnected, address])
 
+  const handleViewRecord = async (record: FileMetadata) => {
+    try {
+      setViewingId(record.id)
+      const blob = await fileUploadService.retrieveFile(record.id)
+
+      // Create object URL and open in new tab
+      const url = URL.createObjectURL(blob)
+      window.open(url, '_blank')
+
+      // Clean up object URL after a delay to allow browser to load it
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+    } catch (err) {
+      console.error("Failed to view record:", err)
+      alert("Failed to decrypt and view record. Please try again.")
+    } finally {
+      setViewingId(null)
+    }
+  }
+
   const filteredRecords = records.filter(record => {
     const matchesSearch = record.fileName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          record.recordType.toLowerCase().includes(searchTerm.toLowerCase())
+      record.recordType.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesType = filterType === "all" || record.recordType === filterType
     return matchesSearch && matchesType
   })
@@ -88,11 +108,11 @@ export default function PatientRecordsPage() {
           </div>
 
           {!isConnected ? (
-             <Card className="p-8 text-center border-dashed">
+            <Card className="p-8 text-center border-dashed">
               <Shield className="mx-auto h-12 w-12 text-gray-400 mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">Connect Wallet to View Records</h3>
               <p className="text-gray-500 mb-6 max-w-md mx-auto">
-                Your health records are encrypted and linked to your wallet address. 
+                Your health records are encrypted and linked to your wallet address.
                 Please connect your wallet to access them.
               </p>
               <div className="flex justify-center">
@@ -105,8 +125,8 @@ export default function PatientRecordsPage() {
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input 
-                    placeholder="Search records by name or type..." 
+                  <Input
+                    placeholder="Search records by name or type..."
                     className="pl-10"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -138,8 +158,8 @@ export default function PatientRecordsPage() {
               ) : error ? (
                 <Card className="p-8 text-center border-red-200 bg-red-50">
                   <p className="text-red-600">{error}</p>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     className="mt-4 border-red-200 hover:bg-red-100 text-red-700"
                     onClick={() => window.location.reload()}
                   >
@@ -153,12 +173,12 @@ export default function PatientRecordsPage() {
                   </div>
                   <h3 className="text-lg font-medium text-gray-900 mb-2">No Records Found</h3>
                   <p className="text-gray-500 mb-6">
-                    {searchTerm || filterType !== 'all' 
+                    {searchTerm || filterType !== 'all'
                       ? "Try adjusting your search or filters"
                       : "You haven't uploaded any health records yet"}
                   </p>
                   {(searchTerm || filterType !== 'all') && (
-                    <Button variant="outline" onClick={() => {setSearchTerm(""); setFilterType("all")}}>
+                    <Button variant="outline" onClick={() => { setSearchTerm(""); setFilterType("all") }}>
                       Clear Filters
                     </Button>
                   )}
@@ -178,17 +198,19 @@ export default function PatientRecordsPage() {
                             </Badge>
                           </div>
                         </div>
-                        {record.ipfsHash && (
-                          <a 
-                            href={`https://gateway.pinata.cloud/ipfs/${record.ipfsHash}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-gray-400 hover:text-blue-600 transition-colors"
-                            title="View on IPFS"
-                          >
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-gray-400 hover:text-blue-600"
+                          onClick={() => handleViewRecord(record)}
+                          disabled={viewingId === record.id}
+                        >
+                          {viewingId === record.id ? (
+                            <span className="animate-spin">⌛</span>
+                          ) : (
                             <ExternalLink className="h-4 w-4" />
-                          </a>
-                        )}
+                          )}
+                        </Button>
                       </CardHeader>
                       <CardContent className="pt-4">
                         <CardTitle className="text-base font-semibold line-clamp-1 mb-1" title={record.fileName}>
@@ -202,10 +224,10 @@ export default function PatientRecordsPage() {
                         </CardDescription>
                       </CardContent>
                       <CardFooter className="pt-0">
-                         <div className="w-full flex items-center gap-2 text-xs text-gray-500 bg-gray-50 p-2 rounded">
-                            <Shield className="h-3 w-3 text-green-600" />
-                            <span className="truncate">Encrypted & Secure</span>
-                         </div>
+                        <div className="w-full flex items-center gap-2 text-xs text-gray-500 bg-gray-50 p-2 rounded">
+                          <Shield className="h-3 w-3 text-green-600" />
+                          <span className="truncate">Encrypted & Secure</span>
+                        </div>
                       </CardFooter>
                     </Card>
                   ))}
