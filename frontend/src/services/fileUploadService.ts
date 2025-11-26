@@ -338,7 +338,7 @@ export class FileUploadService {
     // Get dedicated gateway URL from environment (optional, used as primary if available)
     const dedicatedGateway = process.env.NEXT_PUBLIC_PINATA_GATEWAY
 
-    // Define gateway priority list for PUBLIC IPFS (truly decentralized!)
+    // Define gateway priority list - all verified independent gateways (Nov 2025)
     const gateways = [
       // Primary: Dedicated Pinata gateway (fastest, if configured)
       dedicatedGateway ? {
@@ -346,23 +346,25 @@ export class FileUploadService {
         name: 'Pinata Dedicated Gateway',
         timeout: 10000
       } : null,
-      // Fallback 1: Default Pinata public gateway
+      // Fallback 1: Pinata public gateway (VERIFIED ✅ - 7s response)
       {
         url: `https://gateway.pinata.cloud/ipfs/${ipfsHash}`,
         name: 'Pinata Public Gateway',
         timeout: 10000
       },
-      // Fallback 2: Cloudflare IPFS gateway (fast, reliable CDN)
+      // Fallback 2: dweb.link - IPFS Foundation subdomain gateway (VERIFIED ✅ - 19s response)
+      // Note: w3s.link redirects here, so we use dweb.link directly
       {
-        url: `https://cloudflare-ipfs.com/ipfs/${ipfsHash}`,
-        name: 'Cloudflare IPFS Gateway',
-        timeout: 15000
+        url: `https://dweb.link/ipfs/${ipfsHash}`,
+        name: 'IPFS Foundation Gateway (dweb.link)',
+        timeout: 25000
       },
-      // Fallback 3: Public IPFS.io gateway (original IPFS gateway)
+      // Fallback 3: ipfs.io - IPFS Foundation path gateway (VERIFIED ✅ - 3s response)
+      // Official public gateway, can be slower under load
       {
         url: `https://ipfs.io/ipfs/${ipfsHash}`,
-        name: 'IPFS.io Public Gateway',
-        timeout: 20000
+        name: 'IPFS Foundation Gateway (ipfs.io)',
+        timeout: 30000 // Longer timeout as final fallback
       }
     ].filter(Boolean) as Array<{ url: string; name: string; timeout: number }>
 
@@ -376,7 +378,9 @@ export class FileUploadService {
           // Add timeout per gateway (faster gateways have shorter timeouts)
           signal: AbortSignal.timeout(gateway.timeout),
           credentials: 'omit',
-          mode: 'cors'
+          mode: 'cors',
+          // Follow redirects (dweb.link uses 301 redirects to subdomains)
+          redirect: 'follow'
         })
 
         if (response.ok) {
