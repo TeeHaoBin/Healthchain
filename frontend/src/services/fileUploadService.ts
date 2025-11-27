@@ -16,6 +16,7 @@ export interface FileMetadata {
   fileSize: number
   ipfsHash: string
   encryptedSymmetricKey: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   accessControlConditions: any[]
   patientAddress: string
   authorizedDoctors: string[]
@@ -205,6 +206,46 @@ export class FileUploadService {
 
     } catch (error) {
       console.error('❌ Failed to get patient files:', error)
+      throw error
+    }
+  }
+
+  // Get files accessible to a doctor
+  async getDoctorAccessibleFiles(doctorAddress: string): Promise<FileMetadata[]> {
+    try {
+      const { data, error } = await supabase
+        .from('health_records')
+        .select('*')
+        .contains('authorized_doctors', [doctorAddress.toLowerCase()])
+        .order('uploaded_at', { ascending: false })
+
+      if (error) {
+        throw new Error(`Database error: ${error.message}`)
+      }
+
+      return data.map(record => {
+        // Safely parse access control conditions - handle both string and object types
+        const accessControlConditions = typeof record.access_control_conditions === 'string'
+          ? JSON.parse(record.access_control_conditions)
+          : (record.access_control_conditions || [])
+
+        return {
+          id: record.id,
+          fileName: record.file_name || record.original_filename,
+          fileType: record.file_type || record.mime_type,
+          fileSize: record.file_size,
+          ipfsHash: record.ipfs_hash,
+          encryptedSymmetricKey: record.encrypted_symmetric_key,
+          accessControlConditions,
+          patientAddress: record.patient_wallet,
+          authorizedDoctors: record.authorized_doctors || [],
+          uploadedAt: record.uploaded_at,
+          recordType: record.record_type
+        }
+      })
+
+    } catch (error) {
+      console.error('❌ Failed to get doctor accessible files:', error)
       throw error
     }
   }

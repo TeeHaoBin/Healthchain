@@ -16,7 +16,7 @@ export default function AccessRequestForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
-    
+
     try {
       // TODO: Implement actual access request logic
       await new Promise(resolve => setTimeout(resolve, 1000)) // Simulate API call
@@ -53,9 +53,7 @@ export default function AccessRequestForm() {
             placeholder="0x..."
             className="w-full"
           />
-          <p className="text-xs text-gray-500 mt-1">
-            Enter the patient's blockchain wallet address
-          </p>
+          <p className="text-sm text-gray-500">You&apos;re requesting access to:</p>
         </div>
 
         <div>

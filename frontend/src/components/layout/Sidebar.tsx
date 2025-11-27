@@ -13,7 +13,6 @@ import {
   UserCheck,
   Activity,
   Monitor,
-  KeyRound,
   Loader2,
   CheckCircle,
   AlertCircle,
@@ -40,7 +39,7 @@ const navigationItems = {
   ],
   doctor: [
     { title: "Dashboard", url: "/doctor/dashboard", icon: LayoutDashboard },
-    { title: "Request Access", url: "/doctor/request", icon: KeyRound },
+    { title: "View Document", url: "/doctor/documents", icon: FileText },
     { title: "History", url: "/doctor/history", icon: Activity },
     { title: "Profile", url: "/profile", icon: User },
   ],
@@ -149,7 +148,6 @@ export function Sidebar({ role, isOpen, isMobile, onClose }: SidebarProps) {
         )}
         role="navigation"
         aria-label="Main navigation"
-        aria-expanded={isOpen}
       >
         {/* Logo/Header */}
         <div className="flex h-16 items-center border-b border-gray-200 px-6">
