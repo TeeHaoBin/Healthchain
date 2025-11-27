@@ -1,5 +1,7 @@
+
 import { LitNodeClient } from "@lit-protocol/lit-node-client";
-import { LitNetwork } from "@lit-protocol/constants";
+import { LIT_NETWORK } from "@lit-protocol/constants";
+import { encryptUint8Array, decryptToString, decryptToUint8Array } from "@lit-protocol/encryption";
 
 // TypeScript declaration for window.ethereum
 declare global {
@@ -19,7 +21,7 @@ export class LitProtocolClient {
 
     try {
       this.litNodeClient = new LitNodeClient({
-        litNetwork: LitNetwork.DatilDev, // Use DatilDev for development
+        litNetwork: "datil-dev", // Use DatilDev for development (v7 uses string for this network)
         debug: false,
       });
 
@@ -60,6 +62,7 @@ export class LitProtocolClient {
     if (authorizedDoctors.length > 0) {
       authorizedDoctors.forEach((doctorAddress) => {
         // Add OR operator before each doctor condition
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         conditions.push({ operator: "or" } as any);
 
         // Add doctor condition
@@ -176,9 +179,8 @@ export class LitProtocolClient {
 
       console.log('📝 File converted to base64, starting encryption...');
 
-      // Use the correct v6 API for encryption
-      // First get the auth signature
-      const authSig = await this.getAuthSig();
+      // v7 update: authSig is not required for encryption
+      // const authSig = await this.getAuthSig();
 
       console.log('🔑 Auth signature obtained, preparing data for encryption...');
 
@@ -193,12 +195,16 @@ export class LitProtocolClient {
       });
 
       // Encrypt the file data bytes
-      const { ciphertext, dataToEncryptHash } = await this.litNodeClient.encrypt({
-        accessControlConditions: accessControlConditions as any,
-        authSig,
-        chain: this.chain,
-        dataToEncrypt: dataToEncryptBytes
-      });
+      // v7 update: use encryptUint8Array from @lit-protocol/encryption
+      // v7 update: authSig is not required for encryption
+      const { ciphertext, dataToEncryptHash } = await encryptUint8Array(
+        {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          accessControlConditions: accessControlConditions as any,
+          dataToEncrypt: dataToEncryptBytes
+        },
+        this.litNodeClient!
+      );
 
       if (!ciphertext || !dataToEncryptHash) {
         throw new Error('Encryption failed - no ciphertext returned');
@@ -230,7 +236,7 @@ export class LitProtocolClient {
         } else if (error.message.includes('access control')) {
           throw new Error('Access control error: Invalid wallet addresses provided.');
         } else {
-          throw new Error(`Encryption failed: ${error.message}`);
+          throw new Error(`Encryption failed: ${error.message} `);
         }
       } else {
         throw new Error('Encryption failed: Unknown error');
@@ -289,20 +295,17 @@ export class LitProtocolClient {
       if (typeof encryptedData === 'string') {
         console.log('📝 Decrypting string-based encrypted file...');
 
-        const decryptResponse = await this.litNodeClient.decrypt({
-          accessControlConditions,
-          ciphertext: encryptedData,
-          dataToEncryptHash: encryptedSymmetricKey,
-          authSig,
-          chain: this.chain,
-        });
-
-        console.log('📝 Converting decrypted bytes to string...');
-
-        // Extract decrypted data from response object (Lit Protocol v6 format)
-        const decryptedBytes = decryptResponse.decryptedData;
-        const decoder = new TextDecoder();
-        const decryptedString = decoder.decode(decryptedBytes);
+        // v7 update: use decryptToString from @lit-protocol/encryption
+        const decryptedString = await decryptToString(
+          {
+            accessControlConditions,
+            ciphertext: encryptedData,
+            dataToEncryptHash: encryptedSymmetricKey,
+            authSig,
+            chain: this.chain,
+          },
+          this.litNodeClient!
+        );
 
         console.log('📝 Parsing decrypted file data...');
 
@@ -334,20 +337,18 @@ export class LitProtocolClient {
         // Convert blob to string first
         const blobText = await encryptedData.text();
 
-        const decryptResponse = await this.litNodeClient.decrypt({
-          accessControlConditions,
-          ciphertext: blobText,
-          dataToEncryptHash: encryptedSymmetricKey,
-          authSig,
-          chain: this.chain,
-        });
-
-        console.log('📝 Converting decrypted bytes to string...');
-
-        // Extract decrypted data from response object (Lit Protocol v6 format)
-        const decryptedBytes = decryptResponse.decryptedData;
-        const decoder = new TextDecoder();
-        const decryptedString = decoder.decode(decryptedBytes);
+        // v7 update: use decryptToString or decryptToUint8Array?
+        // If blobText is the ciphertext string, use decryptToString
+        const decryptedString = await decryptToString(
+          {
+            accessControlConditions,
+            ciphertext: blobText,
+            dataToEncryptHash: encryptedSymmetricKey,
+            authSig,
+            chain: this.chain,
+          },
+          this.litNodeClient!
+        );
 
         return decryptedString;
       } else {
@@ -355,7 +356,7 @@ export class LitProtocolClient {
       }
     } catch (error) {
       console.error("❌ Failed to decrypt file:", error);
-      throw new Error(`Decryption failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(`Decryption failed: ${error instanceof Error ? error.message : 'Unknown error'} `);
     }
   }
 
@@ -377,8 +378,8 @@ export class LitProtocolClient {
       ipfsHash,
       encrypted: true,
       litProtocol: {
-        network: LitNetwork.DatilDev,
-        version: "v6",
+        network: "datil-dev",
+        version: "v7",
       },
     };
   }

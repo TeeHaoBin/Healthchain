@@ -45,7 +45,7 @@ export default async function handler(
       })
     }
 
-    let response
+
 
     // Convert base64 back to buffer for upload
     const buffer = Buffer.from(fileData, 'base64')
@@ -80,7 +80,7 @@ export default async function handler(
     }
 
     // Upload using Pinata v3 API
-    response = await fetch('https://uploads.pinata.cloud/v3/files', {
+    const response = await fetch('https://uploads.pinata.cloud/v3/files', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${PINATA_JWT}`,
