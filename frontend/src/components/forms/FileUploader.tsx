@@ -1,12 +1,14 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Upload, File, X, Shield, CheckCircle, AlertCircle } from "lucide-react"
 import { useAccount } from "wagmi"
 import { fileUploadService } from "@/services/fileUploadService"
 import { isValidFileSize, isValidFileType, isValidFileSizeSimple, isValidFileTypeSimple, validateDoctorAddresses } from "@/lib/validation"
+import { useToast } from "@/components/ui/use-toast"
 
 interface UploadStatus {
   file: File
@@ -22,58 +24,64 @@ export default function FileUploader() {
   const [authorizedDoctors, setAuthorizedDoctors] = useState<string>('')
   const [recordType, setRecordType] = useState<string>('general')
   const { address, isConnected } = useAccount()
+  const router = useRouter()
+  const { toast } = useToast()
   // No ref needed for label-based approach - it's pure HTML
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     console.log('handleFileSelect called', event.target.files?.length); // Debug log
-    
+
     const files = event.target.files
     if (files) {
       const newFiles = Array.from(files)
       console.log('Selected files:', newFiles.map(f => f.name)); // Debug log
-      
+
       // Validate files with enhanced validation
       const validFiles: File[] = []
       const invalidFiles: { file: File; error: string; category?: string }[] = []
-      
+
       newFiles.forEach(file => {
         // Validate file type first
         const typeValidation = isValidFileType(file)
         if (!typeValidation.valid) {
-          invalidFiles.push({ 
-            file, 
+          invalidFiles.push({
+            file,
             error: typeValidation.error || 'Unsupported file type',
             category: typeValidation.category
           })
           return
         }
-        
+
         // Validate file size
         const sizeValidation = isValidFileSize(file)
         if (!sizeValidation.valid) {
-          invalidFiles.push({ 
-            file, 
+          invalidFiles.push({
+            file,
             error: sizeValidation.error || 'File too large',
             category: typeValidation.category
           })
           return
         }
-        
+
         // File is valid
         validFiles.push(file)
         console.log(`✅ Valid file: ${file.name} (${typeValidation.category})`)
       })
-      
+
       // Show errors for invalid files
       if (invalidFiles.length > 0) {
-        const errorMessage = invalidFiles.map(({ file, error }) => 
+        const errorMessage = invalidFiles.map(({ file, error }) =>
           `${file.name}: ${error}`
-        ).join('\n')
-        alert(`Some files were rejected:\n\n${errorMessage}`)
+        ).join(', ')
+        toast({
+          title: "Files Rejected",
+          description: errorMessage,
+          variant: "destructive",
+        })
       }
-      
+
       setSelectedFiles(validFiles)
-      
+
       // Reset upload statuses with validation results
       setUploadStatuses([
         ...validFiles.map(file => ({
@@ -89,26 +97,38 @@ export default function FileUploader() {
     } else {
       console.log('No files selected');
     }
-    
+
     // Clear the input value to allow selecting the same files again
     event.target.value = '';
   }
 
   const handleUpload = async () => {
     if (selectedFiles.length === 0 || !isConnected || !address) {
-      alert('Please connect your wallet first')
+      toast({
+        title: "Wallet Required",
+        description: "Please connect your wallet first",
+        variant: "destructive",
+      })
       return
     }
 
     // Validate doctor addresses before uploading
     const doctorValidation = validateDoctorAddresses(authorizedDoctors)
     if (!doctorValidation.valid) {
-      alert(`Invalid doctor addresses:\n\n${doctorValidation.errors.join('\n')}`)
+      toast({
+        title: "Invalid Doctor Addresses",
+        description: doctorValidation.errors.join(', '),
+        variant: "destructive",
+      })
       return
     }
 
     setUploading(true)
-    
+
+    // Track upload results locally to avoid stale state issues
+    let successCount = 0
+    let failCount = 0
+
     try {
       // Parse authorized doctors from comma-separated string
       const doctorAddresses = authorizedDoctors
@@ -119,17 +139,17 @@ export default function FileUploader() {
       // Upload each file
       for (let i = 0; i < selectedFiles.length; i++) {
         const file = selectedFiles[i]
-        
+
         // Update status to uploading
-        setUploadStatuses(prev => 
-          prev.map((status, index) => 
+        setUploadStatuses(prev =>
+          prev.map((status, index) =>
             index === i ? { ...status, status: 'uploading' } : status
           )
         )
 
         try {
           console.log(`🚀 Uploading file ${i + 1}/${selectedFiles.length}: ${file.name}`)
-          
+
           const result = await fileUploadService.uploadEncryptedFile(
             file,
             address,
@@ -139,27 +159,29 @@ export default function FileUploader() {
 
           if (result.success) {
             // Update status to success
-            setUploadStatuses(prev => 
-              prev.map((status, index) => 
-                index === i ? { 
-                  ...status, 
+            setUploadStatuses(prev =>
+              prev.map((status, index) =>
+                index === i ? {
+                  ...status,
                   status: 'success',
-                  ipfsHash: result.ipfsHash 
+                  ipfsHash: result.ipfsHash
                 } : status
               )
             )
+            successCount++
             console.log(`✅ Successfully uploaded: ${file.name}`)
           } else {
             throw new Error(result.error || 'Upload failed')
           }
         } catch (error) {
           console.error(`❌ Failed to upload ${file.name}:`, error)
-          
+          failCount++
+
           // Update status to error
-          setUploadStatuses(prev => 
-            prev.map((status, index) => 
-              index === i ? { 
-                ...status, 
+          setUploadStatuses(prev =>
+            prev.map((status, index) =>
+              index === i ? {
+                ...status,
                 status: 'error',
                 error: error instanceof Error ? error.message : 'Unknown error'
               } : status
@@ -169,10 +191,45 @@ export default function FileUploader() {
       }
 
       console.log('🎉 Upload process completed!')
-      
+
+      if (failCount === 0) {
+        // All files uploaded successfully
+        toast({
+          title: "Upload Successful",
+          description: `Successfully uploaded ${successCount} file${successCount !== 1 ? 's' : ''} to IPFS`,
+        })
+      } else if (successCount > 0) {
+        // Some files failed
+        toast({
+          title: "Partial Upload",
+          description: `${successCount} file${successCount !== 1 ? 's' : ''} uploaded, ${failCount} failed`,
+          variant: "destructive",
+        })
+      } else {
+        // All files failed
+        toast({
+          title: "Upload Failed",
+          description: "All files failed to upload. Please try again.",
+          variant: "destructive",
+        })
+      }
+
+      // Redirect to records page after a short delay to show the toast
+      setTimeout(() => {
+        router.push('/patient/records')
+      }, 2000)
+
     } catch (error) {
       console.error("❌ Upload process failed:", error)
-      alert('Upload failed. Please check console for details.')
+      toast({
+        title: "Upload Failed",
+        description: error instanceof Error ? error.message : "An error occurred during upload",
+        variant: "destructive",
+      })
+      // Redirect to records page even on failure after showing error toast
+      setTimeout(() => {
+        router.push('/patient/records')
+      }, 2000)
     } finally {
       setUploading(false)
     }
@@ -214,14 +271,14 @@ export default function FileUploader() {
           <Shield className="h-5 w-5 text-blue-600" />
           Upload Configuration
         </h3>
-        
+
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Record Type
             </label>
-            <select 
-              value={recordType} 
+            <select
+              value={recordType}
               onChange={(e) => setRecordType(e.target.value)}
               className="w-full p-2 border border-gray-300 rounded-md"
               disabled={uploading}
@@ -233,7 +290,7 @@ export default function FileUploader() {
               <option value="discharge-summary">Discharge Summary</option>
             </select>
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Authorized Doctor Addresses (comma-separated, optional)
@@ -256,7 +313,7 @@ export default function FileUploader() {
       {/* File Upload Card */}
       <Card className="p-6">
         {/* Enhanced Drag & Drop Area */}
-        <div 
+        <div
           className="border-2 border-dashed border-blue-300 rounded-lg p-12 text-center bg-gradient-to-br from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 transition-all duration-300 cursor-pointer"
           onDrop={(e) => {
             e.preventDefault()
@@ -284,7 +341,7 @@ export default function FileUploader() {
                 <Upload className="h-8 w-8 text-blue-600" />
               </div>
             </div>
-            
+
             <div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">
                 🏥 Drag & Drop Your Medical Files Here
@@ -301,13 +358,13 @@ export default function FileUploader() {
               <p className="text-sm text-gray-500 mb-3">
                 Supported file types: PDF, DOC, DOCX, Images, DICOM, XLS, ZIP
               </p>
-              
+
               {/* Professional medical file upload button */}
               <div className="flex flex-col items-center space-y-3">
-                <label 
+                <label
                   htmlFor="medical-file-input"
                   className="inline-flex items-center justify-center px-8 py-4 bg-blue-600 text-white text-base font-semibold rounded-lg cursor-pointer hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
-                  style={{ 
+                  style={{
                     opacity: (uploading || !isConnected) ? 0.5 : 1,
                     pointerEvents: (uploading || !isConnected) ? 'none' : 'auto'
                   }}
@@ -330,7 +387,7 @@ export default function FileUploader() {
               </div>
             </div>
 
-            
+
             {/* Development status indicator */}
             {process.env.NODE_ENV === 'development' && (
               <div className="text-xs text-gray-400 bg-white/50 p-2 rounded mt-4">
@@ -382,8 +439,8 @@ export default function FileUploader() {
             ))}
           </div>
           <div className="mt-4 flex gap-3">
-            <Button 
-              onClick={handleUpload} 
+            <Button
+              onClick={handleUpload}
               disabled={uploading || !isConnected}
               className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 rounded-lg shadow-md transition-colors duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -399,8 +456,8 @@ export default function FileUploader() {
                 </>
               )}
             </Button>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => {
                 setSelectedFiles([])
                 setUploadStatuses([])
@@ -442,7 +499,7 @@ export default function FileUploader() {
             </ul>
           </div>
         </div>
-        
+
         {uploadStatuses.some(s => s.status === 'success') && (
           <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
             <div className="flex items-center gap-2">
