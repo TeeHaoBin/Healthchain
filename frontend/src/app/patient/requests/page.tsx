@@ -3,18 +3,17 @@
 import { useState, useEffect, useCallback } from "react"
 import { useAccount } from "wagmi"
 import RoleGuard from '@/components/auth/RoleGuard'
-import AccessRequestTable, { AccessRequestData } from '@/components/shared/AccessRequestTable'
+import AccessRequestTable from '@/components/shared/AccessRequestTable'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { useToast } from "@/components/ui/use-toast"
-import { dbOperations } from '@/lib/supabase/client'
 import { fileUploadService } from "@/services/fileUploadService"
-import { updateAccessRequest } from "@/lib/supabase/helpers"
+import { updateAccessRequest, getAccessRequestsWithDoctor, AccessRequestWithDoctor } from "@/lib/supabase/helpers"
 
 export default function PatientRequestsPage() {
   const { address, isConnected } = useAccount()
   const { toast } = useToast()
 
-  const [requests, setRequests] = useState<AccessRequestData[]>([])
+  const [requests, setRequests] = useState<AccessRequestWithDoctor[]>([])
   const [loading, setLoading] = useState(true)
   const [processingId, setProcessingId] = useState<string | null>(null)
   const [processingStep, setProcessingStep] = useState("")
@@ -28,7 +27,7 @@ export default function PatientRequestsPage() {
 
     try {
       setLoading(true)
-      const data = await dbOperations.getAccessRequests(address.toLowerCase(), 'patient')
+      const data = await getAccessRequestsWithDoctor(address.toLowerCase())
       setRequests(data || [])
     } catch (error) {
       console.error("Failed to fetch access requests:", error)
@@ -47,7 +46,7 @@ export default function PatientRequestsPage() {
   }, [fetchRequests])
 
   // Handle approve with re-encryption
-  const handleApprove = async (request: AccessRequestData) => {
+  const handleApprove = async (request: AccessRequestWithDoctor) => {
     if (!request.requested_record_ids || request.requested_record_ids.length === 0) {
       toast({
         title: "Error",
@@ -121,7 +120,7 @@ export default function PatientRequestsPage() {
   }
 
   // Handle reject
-  const handleReject = async (request: AccessRequestData) => {
+  const handleReject = async (request: AccessRequestWithDoctor) => {
     setProcessingId(request.id)
     setProcessingStep("Rejecting request...")
 
@@ -167,7 +166,6 @@ export default function PatientRequestsPage() {
           </p>
 
           <AccessRequestTable
-            userType="patient"
             requests={requests}
             onApprove={handleApprove}
             onReject={handleReject}

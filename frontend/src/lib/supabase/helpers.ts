@@ -459,6 +459,58 @@ export async function getAccessRequestsWithPatient(
   }
 }
 
+// Extended interface with doctor details for patient requests page
+export interface AccessRequestWithDoctor extends AccessRequest {
+  doctor_name?: string
+}
+
+// Fetch access requests with doctor names for patient requests page
+export async function getAccessRequestsWithDoctor(
+  patientWallet: string
+): Promise<AccessRequestWithDoctor[]> {
+  try {
+    // First, get all access requests for this patient
+    const { data: requests, error: requestsError } = await supabase
+      .from('access_requests')
+      .select('*')
+      .eq('patient_wallet', patientWallet.toLowerCase())
+      .order('created_at', { ascending: false })
+
+    if (requestsError) throw requestsError
+    if (!requests || requests.length === 0) return []
+
+    // Get unique doctor wallet addresses
+    const doctorWallets = [...new Set(requests.map(r => r.doctor_wallet))]
+
+    // Fetch doctor details for all unique wallets
+    const { data: doctors, error: doctorsError } = await supabase
+      .from('users')
+      .select('wallet_address, full_name')
+      .in('wallet_address', doctorWallets)
+
+    if (doctorsError) {
+      console.error('Error fetching doctor details:', doctorsError)
+    }
+
+    // Create a map of wallet -> name for quick lookup
+    const doctorMap = new Map<string, string>()
+    if (doctors) {
+      doctors.forEach(d => {
+        doctorMap.set(d.wallet_address, d.full_name || '')
+      })
+    }
+
+    // Combine requests with doctor names
+    return requests.map(request => ({
+      ...request,
+      doctor_name: doctorMap.get(request.doctor_wallet) || undefined
+    }))
+  } catch (error) {
+    console.error('Error fetching access requests with doctor:', error)
+    return []
+  }
+}
+
 export async function logAccess(logData: {
   patient_id: string
   doctor_id: string
