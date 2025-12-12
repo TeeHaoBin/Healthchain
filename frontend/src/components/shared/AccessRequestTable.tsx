@@ -18,7 +18,7 @@ interface AccessRequestTableProps {
   processingStep?: string
 }
 
-type StatusFilter = "all" | "pending" | "approved" | "declined"
+type StatusFilter = "all" | "pending" | "approved" | "declined" | "expired"
 
 // Helper to normalize DB status to display status
 function getDisplayStatus(status: string): StatusFilter {
@@ -31,6 +31,9 @@ function getDisplayStatus(status: string): StatusFilter {
     case "denied":
     case "rejected":
       return "declined"
+    case "expired":
+    case "revoked":
+      return "expired"
     default:
       return "pending"
   }
@@ -46,6 +49,8 @@ function getStatusBadge(status: string) {
       return <Badge variant="secondary" className="bg-green-100 text-green-800">Approved</Badge>
     case "declined":
       return <Badge variant="secondary" className="bg-red-100 text-red-800">Declined</Badge>
+    case "expired":
+      return <Badge variant="secondary" className="bg-gray-100 text-gray-800">Expired</Badge>
     default:
       return <Badge variant="secondary">{status}</Badge>
   }
@@ -115,6 +120,7 @@ export default function AccessRequestTable({
       pending: requests.filter(r => getDisplayStatus(r.status) === "pending").length,
       approved: requests.filter(r => getDisplayStatus(r.status) === "approved").length,
       declined: requests.filter(r => getDisplayStatus(r.status) === "declined").length,
+      expired: requests.filter(r => getDisplayStatus(r.status) === "expired").length,
       total: requests.length
     }
   }, [requests])
@@ -151,7 +157,7 @@ export default function AccessRequestTable({
     <div className="space-y-6">
       {/* Statistics Cards */}
       <Card className="p-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="text-center p-4 bg-yellow-50 rounded-lg">
             <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
             <div className="text-sm text-yellow-700">Pending</div>
@@ -163,6 +169,10 @@ export default function AccessRequestTable({
           <div className="text-center p-4 bg-red-50 rounded-lg">
             <div className="text-2xl font-bold text-red-600">{stats.declined}</div>
             <div className="text-sm text-red-700">Declined</div>
+          </div>
+          <div className="text-center p-4 bg-gray-50 rounded-lg">
+            <div className="text-2xl font-bold text-gray-600">{stats.total}</div>
+            <div className="text-sm text-gray-700">Total</div>
           </div>
         </div>
       </Card>
@@ -185,6 +195,7 @@ export default function AccessRequestTable({
               <TabsTrigger value="pending">Pending</TabsTrigger>
               <TabsTrigger value="approved">Approved</TabsTrigger>
               <TabsTrigger value="declined">Declined</TabsTrigger>
+              <TabsTrigger value="expired">Expired</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
