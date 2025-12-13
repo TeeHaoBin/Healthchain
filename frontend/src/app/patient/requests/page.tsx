@@ -120,14 +120,14 @@ export default function PatientRequestsPage() {
   }
 
   // Handle reject
-  const handleReject = async (request: AccessRequestWithDoctor) => {
+  const handleReject = async (request: AccessRequestWithDoctor, denialReason?: string) => {
     setProcessingId(request.id)
     setProcessingStep("Rejecting request...")
 
     try {
       await updateAccessRequest(request.id, {
         status: 'denied',
-        denial_reason: 'Request denied by patient'
+        denial_reason: denialReason || 'Request denied by patient'
       })
 
       // Update local state

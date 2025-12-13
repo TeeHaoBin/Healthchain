@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Tooltip,
@@ -12,13 +13,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { Loader2, Search, FileText, AlertCircle, Info } from "lucide-react"
+import { Loader2, Search, FileText, AlertCircle, Info, X } from "lucide-react"
 import { AccessRequestWithDoctor } from "@/lib/supabase/helpers"
 
 interface AccessRequestTableProps {
   requests: AccessRequestWithDoctor[]
   onApprove?: (request: AccessRequestWithDoctor) => void
-  onReject?: (request: AccessRequestWithDoctor) => void
+  onReject?: (request: AccessRequestWithDoctor, denialReason?: string) => void
   loading?: boolean
   processingId?: string | null
   processingStep?: string
@@ -92,6 +93,8 @@ export default function AccessRequestTable({
 }: AccessRequestTableProps) {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("pending")
+  const [rejectingRequest, setRejectingRequest] = useState<AccessRequestWithDoctor | null>(null)
+  const [denialReason, setDenialReason] = useState("")
 
   // Filter requests based on search and status
   const filteredRequests = useMemo(() => {
@@ -133,6 +136,26 @@ export default function AccessRequestTable({
 
   // Determine if Actions column should be shown
   const showActionsColumn = statusFilter === "all" || statusFilter === "pending"
+
+  // Open rejection modal
+  const openRejectModal = (request: AccessRequestWithDoctor) => {
+    setRejectingRequest(request)
+    setDenialReason("")
+  }
+
+  // Close rejection modal
+  const closeRejectModal = () => {
+    setRejectingRequest(null)
+    setDenialReason("")
+  }
+
+  // Confirm rejection
+  const confirmReject = () => {
+    if (rejectingRequest) {
+      onReject?.(rejectingRequest, denialReason.trim() || undefined)
+      closeRejectModal()
+    }
+  }
 
   // Check if status is pending
   const isPending = (status: string) => getDisplayStatus(status) === "pending"
@@ -311,7 +334,7 @@ export default function AccessRequestTable({
                             size="sm"
                             variant="outline"
                             className="text-red-600 border-red-600 hover:bg-red-50"
-                            onClick={() => onReject?.(request)}
+                            onClick={() => openRejectModal(request)}
                             disabled={!!processingId}
                           >
                             Reject
@@ -348,6 +371,75 @@ export default function AccessRequestTable({
           </div>
         )}
       </Card>
+
+      {/* Rejection Modal */}
+      {rejectingRequest && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={closeRejectModal}>
+          <Card className="max-w-md w-full mx-4 p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Reject Access Request</h3>
+              <Button variant="ghost" size="sm" onClick={closeRejectModal}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Doctor</p>
+                <p className="font-medium">
+                  {rejectingRequest.doctor_name || formatWallet(rejectingRequest.doctor_wallet)}
+                </p>
+                <p className="text-xs text-gray-500 font-mono mt-0.5">
+                  {rejectingRequest.doctor_wallet}
+                </p>
+              </div>
+
+              {rejectingRequest.document_names && rejectingRequest.document_names.length > 0 && (
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">Requested Document(s)</p>
+                  <div className="space-y-1">
+                    {rejectingRequest.document_names.map((name, idx) => (
+                      <p key={idx} className="text-gray-700 flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                        {name}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Doctor&apos;s Reason</p>
+                <div className="max-h-24 overflow-y-auto bg-gray-50 rounded-md p-2">
+                  <p className="text-gray-700 break-words whitespace-pre-wrap text-sm">{rejectingRequest.purpose || "No reason provided"}</p>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Reason for Rejection (Optional)</p>
+                <Textarea
+                  placeholder="Enter your reason for rejecting this request..."
+                  value={denialReason}
+                  onChange={(e) => setDenialReason(e.target.value)}
+                  className="min-h-[100px]"
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 flex gap-3">
+              <Button variant="outline" onClick={closeRejectModal} className="flex-1">
+                Cancel
+              </Button>
+              <Button
+                onClick={confirmReject}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+              >
+                Confirm Reject
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }
