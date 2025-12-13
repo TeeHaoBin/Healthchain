@@ -270,8 +270,8 @@ export default function AccessRequestTable({
                             <Info className="h-4 w-4 text-gray-500" />
                           </button>
                         </TooltipTrigger>
-                        <TooltipContent side="bottom" className="max-w-xs">
-                          <p className="text-sm">{request.purpose || "No reason provided"}</p>
+                        <TooltipContent side="bottom" className="max-w-md">
+                          <p className="text-sm break-words">{request.purpose || "No reason provided"}</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
