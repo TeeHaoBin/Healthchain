@@ -7,7 +7,13 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Search, X, FileText, AlertCircle } from "lucide-react"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { Search, X, FileText, AlertCircle, Info } from "lucide-react"
 import { getAccessRequestsWithPatient, AccessRequestWithPatient } from "@/lib/supabase/helpers"
 
 interface AccessHistoryProps {
@@ -268,8 +274,8 @@ export default function AccessHistory({ walletAddress }: AccessHistoryProps) {
             <thead>
               <tr className="border-b">
                 <th className="text-left py-3 px-4">Patient</th>
-                <th className="text-left py-3 px-4">Wallet Address</th>
-                <th className="text-left py-3 px-4">Reason</th>
+                <th className="text-left py-3 px-4">Document</th>
+                <th className="text-left py-3 px-4 w-10">Reason</th>
                 <th className="text-left py-3 px-4">Status</th>
                 <th className="text-left py-3 px-4">Requested</th>
                 <th className="text-left py-3 px-4">Expires</th>
@@ -287,22 +293,55 @@ export default function AccessHistory({ walletAddress }: AccessHistoryProps) {
                     onClick={() => isClickable && handleRowClick(request)}
                   >
                     <td className="py-3 px-4">
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-gray-400" />
+                      <div className="flex flex-col">
                         <p className="font-medium">
                           {request.patient_name || formatWallet(request.patient_wallet)}
                         </p>
+                        <span className="text-xs text-gray-500 font-mono">
+                          {formatWallet(request.patient_wallet)}
+                        </span>
                       </div>
                     </td>
                     <td className="py-3 px-4">
-                      <span className="text-sm text-gray-600 font-mono">
-                        {formatWallet(request.patient_wallet)}
-                      </span>
+                      {request.document_names && request.document_names.length > 0 ? (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex items-center gap-2 cursor-help">
+                                <FileText className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                                <span className="text-sm text-gray-700 truncate max-w-[150px]">
+                                  {request.document_names.length === 1
+                                    ? request.document_names[0]
+                                    : `${request.document_names.length} documents`}
+                                </span>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" className="max-w-xs">
+                              <div className="space-y-1">
+                                {request.document_names.map((name, idx) => (
+                                  <p key={idx} className="text-sm">{name}</p>
+                                ))}
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      ) : (
+                        <span className="text-sm text-gray-400">—</span>
+                      )}
                     </td>
                     <td className="py-3 px-4">
-                      <p className="text-sm text-gray-700 max-w-xs truncate" title={request.purpose}>
-                        {request.purpose}
-                      </p>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button className="p-1 rounded-full hover:bg-gray-100 transition-colors">
+                              <Info className="h-4 w-4 text-gray-500" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" className="max-w-xs">
+                            <p className="text-sm">{request.purpose || "No reason provided"}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </td>
                     <td className="py-3 px-4">
                       {getStatusBadge(displayStatus)}

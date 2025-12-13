@@ -410,6 +410,7 @@ export async function updateAccessRequest(
 // Extended interface with patient details for history display
 export interface AccessRequestWithPatient extends AccessRequest {
   patient_name?: string
+  document_names?: string[] // Document titles for display
 }
 
 // Fetch access requests with patient names for doctor history page
@@ -448,10 +449,37 @@ export async function getAccessRequestsWithPatient(
       })
     }
 
-    // Combine requests with patient names
+    // Get all unique record IDs from all requests
+    const allRecordIds = requests
+      .flatMap(r => r.requested_record_ids || [])
+      .filter((id, index, self) => self.indexOf(id) === index)
+
+    // Fetch document titles for all record IDs
+    let recordMap = new Map<string, string>()
+    if (allRecordIds.length > 0) {
+      const { data: records, error: recordsError } = await supabase
+        .from('health_records')
+        .select('id, title')
+        .in('id', allRecordIds)
+
+      if (recordsError) {
+        console.error('Error fetching record details:', recordsError)
+      }
+
+      if (records) {
+        records.forEach(r => {
+          recordMap.set(r.id, r.title || 'Untitled Document')
+        })
+      }
+    }
+
+    // Combine requests with patient names and document names
     return requests.map(request => ({
       ...request,
-      patient_name: patientMap.get(request.patient_wallet) || undefined
+      patient_name: patientMap.get(request.patient_wallet) || undefined,
+      document_names: request.requested_record_ids?.map(
+        (id: string) => recordMap.get(id) || 'Unknown Document'
+      )
     }))
   } catch (error) {
     console.error('Error fetching access requests with patient:', error)
