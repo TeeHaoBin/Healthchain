@@ -13,11 +13,23 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { useToast } from "@/components/ui/use-toast"
 import { fileUploadService, FileMetadata } from "@/services/fileUploadService"
 import WalletConnect from "@/components/auth/WalletConnect"
 
 export default function PatientRecordsPage() {
   const { isConnected, address } = useAccount()
+  const { toast } = useToast()
 
   // Parse highlightId from URL on client side to avoid useSearchParams Suspense issues
   const [highlightId, setHighlightId] = useState<string | null>(null)
@@ -29,6 +41,11 @@ export default function PatientRecordsPage() {
   const [filterType, setFilterType] = useState("all")
   const [viewingId, setViewingId] = useState<string | null>(null)
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
+
+  // Delete confirmation state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [recordToDelete, setRecordToDelete] = useState<FileMetadata | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   // Refs for scrolling to highlighted card
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map())
@@ -104,6 +121,45 @@ export default function PatientRecordsPage() {
       alert("Failed to decrypt and view record. Please try again.")
     } finally {
       setViewingId(null)
+    }
+  }
+
+  // Open delete confirmation dialog
+  const handleDeleteClick = (record: FileMetadata) => {
+    setRecordToDelete(record)
+    setDeleteDialogOpen(true)
+  }
+
+  // Confirm and execute deletion
+  const confirmDelete = async () => {
+    if (!recordToDelete || !address) return
+
+    try {
+      setDeletingId(recordToDelete.id)
+      setDeleteDialogOpen(false)
+
+      const result = await fileUploadService.deleteRecord(recordToDelete.id, address)
+
+      if (result.success) {
+        // Remove from local state
+        setRecords(prev => prev.filter(r => r.id !== recordToDelete.id))
+        toast({
+          title: "Record Deleted",
+          description: `"${recordToDelete.fileName}" has been permanently deleted.`,
+        })
+      } else {
+        throw new Error(result.error || "Failed to delete record")
+      }
+    } catch (err) {
+      console.error("Failed to delete record:", err)
+      toast({
+        title: "Delete Failed",
+        description: err instanceof Error ? err.message : "Failed to delete record. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setDeletingId(null)
+      setRecordToDelete(null)
     }
   }
 
@@ -296,13 +352,15 @@ export default function PatientRecordsPage() {
                             variant="outline"
                             size="sm"
                             className="flex-1 gap-1 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
-                            onClick={() => {
-                              // TODO: Implement delete functionality
-                              console.log('Delete record:', record.id)
-                            }}
+                            onClick={() => handleDeleteClick(record)}
+                            disabled={deletingId === record.id}
                           >
-                            <Trash2 className="h-3 w-3" />
-                            Delete
+                            {deletingId === record.id ? (
+                              <span className="animate-spin">⌛</span>
+                            ) : (
+                              <Trash2 className="h-3 w-3" />
+                            )}
+                            {deletingId === record.id ? 'Deleting...' : 'Delete'}
                           </Button>
                         </div>
                       </CardFooter>
@@ -313,6 +371,37 @@ export default function PatientRecordsPage() {
             </>
           )}
         </div>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Health Record</AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <div className="text-sm text-gray-500">
+                  <p>
+                    Are you sure you want to delete <strong>&quot;{recordToDelete?.fileName}&quot;</strong>?
+                  </p>
+                  <p className="mt-3">
+                    This action cannot be undone. The file will be permanently removed from your health records and IPFS storage.
+                  </p>
+                  <p className="mt-3">
+                    Any pending or approved access requests for this document will be revoked.
+                  </p>
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmDelete}
+                className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+              >
+                Delete Permanently
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </DashboardLayout>
     </RoleGuard>
   )

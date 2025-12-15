@@ -599,6 +599,93 @@ export class FileUploadService {
 
     return null
   }
+
+  /**
+   * Delete a health record completely
+   * 1. Delete from Supabase health_records
+   * 2. Unpin from Pinata
+   * 3. Update access_requests to 'revoked' status
+   */
+  async deleteRecord(recordId: string, patientWallet: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log('🗑️ Starting record deletion for:', recordId)
+
+      // Step 1: Fetch record to get IPFS hash and verify ownership
+      const { data: record, error: fetchError } = await supabase
+        .from('health_records')
+        .select('*')
+        .eq('id', recordId)
+        .single()
+
+      if (fetchError || !record) {
+        throw new Error(`Record not found: ${fetchError?.message || 'Unknown error'}`)
+      }
+
+      // Verify ownership
+      if (record.patient_wallet.toLowerCase() !== patientWallet.toLowerCase()) {
+        throw new Error('Unauthorized: You can only delete your own records')
+      }
+
+      const ipfsHash = record.ipfs_hash
+
+      // Step 2: Delete from Supabase health_records
+      console.log('💾 Deleting from Supabase...')
+      const { error: deleteError } = await supabase
+        .from('health_records')
+        .delete()
+        .eq('id', recordId)
+
+      if (deleteError) {
+        throw new Error(`Database deletion failed: ${deleteError.message}`)
+      }
+
+      console.log('✅ Record deleted from Supabase')
+
+      // Step 3: Update access_requests that reference this record
+      // Set status to 'revoked' with denial_reason
+      console.log('📋 Updating related access requests...')
+      const { error: updateError } = await supabase
+        .from('access_requests')
+        .update({
+          status: 'revoked',
+          denial_reason: 'Document deleted by patient',
+          responded_at: new Date().toISOString()
+        })
+        .contains('requested_record_ids', [recordId])
+        // Critical Fix: Only revoke ACTIVE or PENDING requests.
+        // Do not touch 'denied', 'expired', or 'revoked' to preserve history.
+        .in('status', ['pending', 'sent', 'approved', 'draft'])
+
+      if (updateError) {
+        console.error('⚠️ Failed to update access requests:', updateError)
+        // Don't throw - record is already deleted, this is just cleanup
+      } else {
+        console.log('✅ Access requests updated')
+      }
+
+      // Step 4: Unpin from Pinata (if IPFS hash exists)
+      if (ipfsHash) {
+        console.log('☁️ Unpinning from IPFS...')
+        try {
+          await ipfsClient.deleteFile(ipfsHash)
+          console.log('✅ File unpinned from IPFS')
+        } catch (unpinError) {
+          console.warn('⚠️ Failed to unpin from IPFS (file may already be unpinned):', unpinError)
+          // Don't throw - Supabase record is already deleted
+        }
+      }
+
+      console.log('✅ Record deletion completed successfully')
+      return { success: true }
+
+    } catch (error) {
+      console.error('❌ Record deletion failed:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
+      }
+    }
+  }
 }
 
 export const fileUploadService = new FileUploadService();

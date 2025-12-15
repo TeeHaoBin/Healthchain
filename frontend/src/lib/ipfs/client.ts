@@ -48,7 +48,7 @@ export class IPFSClient {
       if (!result.success) {
         throw new Error(result.error || 'Upload failed')
       }
-      
+
       return result.ipfsHash
     } catch (error) {
       console.error('Error uploading to IPFS:', error)
@@ -76,19 +76,19 @@ export class IPFSClient {
       if (!encryptedBlob) {
         throw new Error('Encrypted blob is required but was not provided')
       }
-      
+
       if (!(encryptedBlob instanceof Blob)) {
         throw new Error('Encrypted data must be a valid Blob object')
       }
-      
+
       if (encryptedBlob.size === 0) {
         throw new Error('Encrypted blob is empty')
       }
-      
+
       if (!originalFileName || originalFileName.trim().length === 0) {
         throw new Error('Original filename is required')
       }
-      
+
       if (!healthcareMetadata?.patientAddress) {
         throw new Error('Patient address is required in metadata')
       }
@@ -143,7 +143,7 @@ export class IPFSClient {
       if (!result.success) {
         throw new Error(result.error || 'Upload failed')
       }
-      
+
       return result.ipfsHash
     } catch (error) {
       console.error('Error uploading encrypted file to IPFS:', error)
@@ -186,7 +186,7 @@ export class IPFSClient {
       if (!result.success) {
         throw new Error(result.error || 'Upload failed')
       }
-      
+
       return result.ipfsHash
     } catch (error) {
       console.error('Error uploading JSON to IPFS:', error)
@@ -201,6 +201,40 @@ export class IPFSClient {
   async getFile(ipfsHash: string): Promise<Response> {
     const url = this.getFileUrl(ipfsHash)
     return fetch(url)
+  }
+
+  /**
+   * Delete/unpin a file from Pinata by its IPFS hash (CID)
+   * Uses server-side API endpoint to protect Pinata JWT
+   */
+  async deleteFile(ipfsHash: string): Promise<boolean> {
+    try {
+      console.log('🗑️ Requesting file deletion from IPFS:', ipfsHash)
+
+      const response = await fetch('/api/delete-from-pinata', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ cid: ipfsHash }),
+      })
+
+      if (!response.ok) {
+        const errorResult = await response.json()
+        throw new Error(errorResult.error || `HTTP error! status: ${response.status}`)
+      }
+
+      const result = await response.json()
+      if (!result.success) {
+        throw new Error(result.error || 'Delete failed')
+      }
+
+      console.log('✅ File unpinned from IPFS:', ipfsHash)
+      return true
+    } catch (error) {
+      console.error('Error deleting file from IPFS:', error)
+      throw error
+    }
   }
 }
 
