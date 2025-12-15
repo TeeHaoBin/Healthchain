@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react"
 import Link from "next/link"
 import { useAccount } from "wagmi"
 import { format } from "date-fns"
-import { FileText, Upload, Calendar, File, Shield, ExternalLink, Search, Filter } from "lucide-react"
+import { FileText, Upload, Calendar, File, Shield, ExternalLink, Search, Filter, Pencil, Trash2 } from "lucide-react"
 
 import RoleGuard from '@/components/auth/RoleGuard'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
@@ -279,9 +279,31 @@ export default function PatientRecordsPage() {
                         </CardDescription>
                       </CardContent>
                       <CardFooter className="pt-0">
-                        <div className="w-full flex items-center gap-2 text-xs text-gray-500 bg-gray-50 p-2 rounded">
-                          <Shield className="h-3 w-3 text-green-600" />
-                          <span className="truncate">Encrypted & Secure</span>
+                        <div className="w-full flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 gap-1 text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300"
+                            onClick={() => {
+                              // TODO: Implement edit functionality
+                              console.log('Edit record:', record.id)
+                            }}
+                          >
+                            <Pencil className="h-3 w-3" />
+                            Edit
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 gap-1 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+                            onClick={() => {
+                              // TODO: Implement delete functionality
+                              console.log('Delete record:', record.id)
+                            }}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                            Delete
+                          </Button>
                         </div>
                       </CardFooter>
                     </Card>
