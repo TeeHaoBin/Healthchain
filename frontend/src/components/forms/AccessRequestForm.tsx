@@ -49,7 +49,8 @@ export default function AccessRequestForm({ selectedRecord, doctorWallet, onCanc
         purpose: formData.reason,
         status: 'sent',
         sent_at: new Date().toISOString(),
-        expires_at: new Date(Date.now() + parseInt(formData.duration) * 24 * 60 * 60 * 1000).toISOString()
+        expires_at: new Date(Date.now() + parseInt(formData.duration) * 24 * 60 * 60 * 1000).toISOString(),
+        document_names: [selectedRecord.title] // Critical: Snapshot the title
       })
 
       onSuccess()

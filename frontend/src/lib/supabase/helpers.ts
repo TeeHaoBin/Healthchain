@@ -66,6 +66,7 @@ export interface AccessRequest {
   sent_at?: string
   responded_at?: string
   expires_at?: string
+  snapshot_document_titles?: string[]
 }
 
 // In-memory cache for user lookups to prevent redundant API calls
@@ -362,12 +363,19 @@ export async function createAccessRequest(requestData: {
   purpose: string
   urgency?: AccessRequest['urgency']
   status?: AccessRequest['status']
+
   expires_at?: string
+  document_names?: string[] // Optional: pass names to snapshot them
 }): Promise<AccessRequest | null> {
   try {
+    const { document_names, ...dbData } = requestData
     const { data, error } = await supabase
       .from('access_requests')
-      .insert([requestData])
+      .insert([{
+        ...dbData,
+        // Save snapshot of document titles if provided
+        snapshot_document_titles: document_names
+      }])
       .select()
       .single()
 
@@ -474,13 +482,27 @@ export async function getAccessRequestsWithPatient(
     }
 
     // Combine requests with patient names and document names
-    return requests.map(request => ({
-      ...request,
-      patient_name: patientMap.get(request.patient_wallet) || undefined,
-      document_names: request.requested_record_ids?.map(
-        (id: string) => recordMap.get(id) || 'Unknown Document'
-      )
-    }))
+    return requests.map(request => {
+      // Logic: Use live record title if available, otherwise fallback to snapshot
+      const documentNames = request.requested_record_ids?.map((id: string, index: number) => {
+        const liveTitle = recordMap.get(id)
+
+        if (liveTitle) return liveTitle
+
+        // Fallback to snapshot if available
+        if (request.snapshot_document_titles && request.snapshot_document_titles[index]) {
+          return `${request.snapshot_document_titles[index]} (Deleted)`
+        }
+
+        return 'Unknown Document'
+      }) || []
+
+      return {
+        ...request,
+        patient_name: patientMap.get(request.patient_wallet) || undefined,
+        document_names: documentNames
+      }
+    })
   } catch (error) {
     console.error('Error fetching access requests with patient:', error)
     return []

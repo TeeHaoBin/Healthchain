@@ -10,14 +10,19 @@ import AccessRequestForm from '@/components/forms/AccessRequestForm'
 import { EHRRecord } from '@/types'
 import { useToast } from "@/components/ui/use-toast"
 import { dbOperations } from '@/lib/supabase/client'
+import { useRole } from '@/hooks/useRole'
 
 export default function DoctorRequestPage() {
   const [searchResults, setSearchResults] = useState<EHRRecord[]>([])
   const [loading, setLoading] = useState(false)
   const [selectedRecord, setSelectedRecord] = useState<EHRRecord | null>(null)
   const [permissionFilter, setPermissionFilter] = useState<'all' | 'granted' | 'pending' | 'none'>('all')
-  const { address: doctorWallet, isConnected } = useAccount()
+  const { address } = useAccount()
+  const { user } = useRole()
   const { toast } = useToast()
+
+  // Use wallet from connection OR session fallback
+  const doctorWallet = address || user?.wallet_address
 
   const handleSearch = async (patientWallet: string) => {
     if (!patientWallet.trim()) return

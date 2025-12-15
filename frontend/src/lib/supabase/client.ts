@@ -163,9 +163,13 @@ export const dbOperations = {
 
   // Access request operations
   async createAccessRequest(requestData: any) {
+    const { document_names, ...dbData } = requestData
     const { data, error } = await supabase
       .from('access_requests')
-      .insert([requestData])
+      .insert([{
+        ...dbData,
+        snapshot_document_titles: document_names
+      }])
       .select()
       .single()
 

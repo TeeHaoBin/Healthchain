@@ -21,7 +21,7 @@ interface AccessHistoryProps {
   walletAddress?: string
 }
 
-type StatusFilter = "all" | "pending" | "granted" | "declined" | "expired"
+type StatusFilter = "all" | "pending" | "granted" | "declined" | "expired" | "revoked"
 
 // Helper to determine display status from DB status and dates
 // Accepts currentTime as parameter to avoid SSR hydration mismatch
@@ -40,8 +40,9 @@ function getDisplayStatus(request: AccessRequestWithPatient, currentTime: Date |
       return "granted"
     case "denied":
       return "declined"
-    case "expired":
     case "revoked":
+      return "revoked"
+    case "expired":
       return "expired"
     default:
       return "pending"
@@ -59,6 +60,8 @@ function getStatusBadge(status: StatusFilter) {
       return <Badge variant="secondary" className="bg-red-100 text-red-800">Access Declined</Badge>
     case "expired":
       return <Badge variant="secondary" className="bg-gray-100 text-gray-800">Expired</Badge>
+    case "revoked":
+      return <Badge variant="secondary" className="bg-slate-100 text-slate-800 border-slate-200">Revoked</Badge>
     default:
       return <Badge variant="secondary">{status}</Badge>
   }
@@ -269,6 +272,7 @@ export default function AccessHistory({ walletAddress }: AccessHistoryProps) {
               <TabsTrigger value="granted">Granted</TabsTrigger>
               <TabsTrigger value="declined">Declined</TabsTrigger>
               <TabsTrigger value="expired">Expired</TabsTrigger>
+              <TabsTrigger value="revoked">Revoked</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
