@@ -272,9 +272,11 @@ export class LitProtocolClient {
       // Each user (patient, doctor) signs with their own wallet when accessing data
       const authSig = await checkAndSignAuthMessage({
         chain: this.chain as any,
-        nonce: await this.generateNonce(), // Required parameter
-        // Optional: Add resources if needed for access control
-        // resources: [],
+        nonce: await this.generateNonce(),
+        uri: window.location.href,
+        domain: window.location.host,
+        expiration: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
+        statement: "Sign this message to authenticate with HealthChain securely.",
       });
 
       // Cache the auth signature for future use
