@@ -117,7 +117,7 @@ export default function AccessHistory({ walletAddress }: AccessHistoryProps) {
         setRequests(data)
       } catch (err) {
         console.error("Error fetching access history:", err)
-        setError("Failed to load access history. Please try again.")
+        setError("Failed to load request history. Please try again.")
       } finally {
         setLoading(false)
       }
@@ -282,7 +282,7 @@ export default function AccessHistory({ walletAddress }: AccessHistoryProps) {
           </Tabs>
         </div>
 
-        <h3 className="text-lg font-medium mb-4">Access History</h3>
+        <h3 className="text-lg font-medium mb-4">Request History</h3>
 
         {/* Table */}
         <div className="overflow-x-auto">
@@ -326,6 +326,7 @@ export default function AccessHistory({ walletAddress }: AccessHistoryProps) {
                               {displayStatus === "granted" && request.requested_record_ids?.length ? (
                                 <Link
                                   href={`/doctor/documents?highlightId=${request.requested_record_ids[0]}`}
+                                  prefetch={false}
                                   className="flex items-center gap-2 cursor-pointer hover:text-blue-600 transition-colors group"
                                   onClick={(e) => e.stopPropagation()}
                                 >
@@ -402,7 +403,7 @@ export default function AccessHistory({ walletAddress }: AccessHistoryProps) {
             <p className="text-gray-500">
               {searchTerm || statusFilter !== "all"
                 ? "No requests match your filters"
-                : "No access history found"}
+                : "No request history found"}
             </p>
             {(searchTerm || statusFilter !== "all") && (
               <Button

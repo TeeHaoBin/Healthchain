@@ -16,10 +16,10 @@ export default function DoctorHistoryPage() {
       <DashboardLayout>
         <div className="max-w-6xl mx-auto">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Access History
+            Request History
           </h1>
           <p className="text-gray-600 mb-8">
-            View your complete access request history and patient responses.
+            View your complete request history and patient responses.
           </p>
 
           {!isConnected ? (
@@ -27,7 +27,7 @@ export default function DoctorHistoryPage() {
               <Shield className="mx-auto h-12 w-12 text-gray-400 mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">Connect Wallet to View History</h3>
               <p className="text-gray-500 mb-6 max-w-md mx-auto">
-                Your access history is secured by blockchain. Please connect your wallet to view.
+                Your request history is secured by blockchain. Please connect your wallet to view.
               </p>
               <div className="flex justify-center">
                 <WalletConnect />
