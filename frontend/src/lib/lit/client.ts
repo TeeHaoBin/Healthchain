@@ -1,17 +1,22 @@
 
-import { LitNodeClient } from "@lit-protocol/lit-node-client";
-import { LIT_NETWORK } from "@lit-protocol/constants";
-import { encryptUint8Array, decryptToString, decryptToUint8Array } from "@lit-protocol/encryption";
+// Helper for dynamic imports
+const loadLitPackages = async () => {
+  const { LitNodeClient } = await import("@lit-protocol/lit-node-client");
+  const { encryptUint8Array, decryptToString } = await import("@lit-protocol/encryption");
+  return { LitNodeClient, encryptUint8Array, decryptToString };
+};
 
 // TypeScript declaration for window.ethereum
 declare global {
   interface Window {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ethereum?: any;
   }
 }
 
 export class LitProtocolClient {
-  private litNodeClient: LitNodeClient | null = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private litNodeClient: any = null;
   private chain = "ethereum";
 
   // Cache auth signature to avoid prompting user multiple times
@@ -26,6 +31,8 @@ export class LitProtocolClient {
     }
 
     try {
+      const { LitNodeClient } = await loadLitPackages();
+
       this.litNodeClient = new LitNodeClient({
         litNetwork: "datil-dev", // Use DatilDev for development (v7 uses string for this network)
         debug: false,
@@ -100,6 +107,7 @@ export class LitProtocolClient {
   ): Promise<{
     encryptedData: Blob;
     encryptedSymmetricKey: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     accessControlConditions: any[];
   }> {
     // Convert ArrayBuffer to File object and use the new encryption method
@@ -118,6 +126,7 @@ export class LitProtocolClient {
   ): Promise<{
     encryptedData: Blob;
     encryptedSymmetricKey: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     accessControlConditions: any[];
   }> {
     if (!this.litNodeClient) {
@@ -125,6 +134,8 @@ export class LitProtocolClient {
     }
 
     try {
+      const { encryptUint8Array } = await loadLitPackages();
+
       // Validate inputs
       if (!file) {
         throw new Error('File is required for encryption');
@@ -255,6 +266,7 @@ export class LitProtocolClient {
 
   // Get authentication signature from wallet using Lit Protocol's built-in SIWE helper
   // Uses caching to avoid prompting user multiple times within TTL window
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async getAuthSig(): Promise<any> {
     // Check if we have a valid cached auth signature
     const now = Date.now();
@@ -265,12 +277,13 @@ export class LitProtocolClient {
     }
 
     try {
-      // Import Lit's official auth helper
+      // Import Lit's official auth helper - dynamic import
       const { checkAndSignAuthMessage } = await import('@lit-protocol/lit-node-client');
 
       // Use Lit's official SIWE generator - this ensures proper EIP-4361 compliance
       // Each user (patient, doctor) signs with their own wallet when accessing data
       const authSig = await checkAndSignAuthMessage({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         chain: this.chain as any,
         nonce: await this.generateNonce(),
         uri: window.location.href,
@@ -300,6 +313,7 @@ export class LitProtocolClient {
   async decryptFile(
     encryptedData: string | Blob,
     encryptedSymmetricKey: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     accessControlConditions: any[]
   ): Promise<ArrayBuffer | string | Blob> {
     if (!this.litNodeClient) {
@@ -307,6 +321,7 @@ export class LitProtocolClient {
     }
 
     try {
+      const { decryptToString } = await loadLitPackages();
       const authSig = await this.getAuthSig();
 
       console.log('🔓 Starting file decryption...', {
