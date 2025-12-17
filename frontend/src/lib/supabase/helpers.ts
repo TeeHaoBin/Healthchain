@@ -69,6 +69,39 @@ export interface AccessRequest {
   snapshot_document_titles?: string[]
 }
 
+// ============================================
+// Transfer Request Types (Doctor-to-Doctor)
+// ============================================
+
+export interface TransferRequest {
+  id: string
+  patient_wallet: string
+  requesting_doctor_wallet: string  // Doctor B - wants the document
+  source_doctor_wallet: string       // Doctor A - has the document
+  source_organization?: string
+  document_description?: string      // What document is being requested
+  requested_record_ids?: string[]    // Filled after Doctor A uploads
+  snapshot_document_titles?: string[]
+  purpose: string
+  urgency: 'routine' | 'urgent' | 'emergency'
+  patient_status: 'pending' | 'approved' | 'denied'
+  patient_responded_at?: string
+  patient_denial_reason?: string
+  source_status: 'awaiting_upload' | 'uploaded' | 'rejected' | 'granted' | 'failed'
+  source_responded_at?: string
+  source_failure_reason?: string
+  source_rejection_reason?: string   // Reason if Doctor A rejects
+  created_at: string
+  expires_at: string
+}
+
+export interface TransferRequestWithNames extends TransferRequest {
+  patient_name?: string
+  requesting_doctor_name?: string
+  source_doctor_name?: string
+  document_names?: string[]
+}
+
 // In-memory cache for user lookups to prevent redundant API calls
 const userCache = new Map<string, { user: User | null; timestamp: number }>()
 const USER_CACHE_TTL = 30000 // 30 seconds
@@ -680,5 +713,441 @@ export async function verifyDoctor(
   } catch (error) {
     console.error('Error verifying doctor:', error)
     return false
+  }
+}
+
+// ============================================
+// Transfer Request Management (Doctor-to-Doctor)
+// ============================================
+
+/**
+ * Create a new transfer request (called by Doctor B - the requester)
+ * In new workflow: Doctor B requests → Doctor A uploads → Patient approves
+ */
+export async function createTransferRequest(requestData: {
+  patient_wallet: string
+  requesting_doctor_wallet: string  // Doctor B
+  source_doctor_wallet: string       // Doctor A
+  source_organization?: string
+  document_description: string       // What document is needed
+  purpose: string
+  urgency?: 'routine' | 'urgent' | 'emergency'
+}): Promise<TransferRequest | null> {
+  try {
+    const { data, error } = await supabase
+      .from('transfer_requests')
+      .insert([{
+        patient_wallet: requestData.patient_wallet.toLowerCase(),
+        requesting_doctor_wallet: requestData.requesting_doctor_wallet.toLowerCase(),
+        source_doctor_wallet: requestData.source_doctor_wallet.toLowerCase(),
+        source_organization: requestData.source_organization,
+        document_description: requestData.document_description,
+        purpose: requestData.purpose,
+        urgency: requestData.urgency || 'routine',
+        source_status: 'awaiting_upload',  // Doctor A needs to upload
+        patient_status: 'pending'
+      }])
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  } catch (error) {
+    console.error('Error creating transfer request:', error)
+    return null
+  }
+}
+
+/**
+ * Get transfer requests for a patient (only show after Doctor A has uploaded)
+ * Patient sees requests where source_status='uploaded' and patient_status='pending'
+ */
+export async function getTransferRequestsForPatient(
+  patientWallet: string
+): Promise<TransferRequestWithNames[]> {
+  try {
+    const { data: requests, error: requestsError } = await supabase
+      .from('transfer_requests')
+      .select('*')
+      .eq('patient_wallet', patientWallet.toLowerCase())
+      .in('source_status', ['uploaded', 'granted', 'failed'])  // Only after Doctor A uploads
+      .order('created_at', { ascending: false })
+
+    if (requestsError) throw requestsError
+    if (!requests || requests.length === 0) return []
+
+    // Get unique doctor wallet addresses
+    const doctorWallets = [
+      ...new Set([
+        ...requests.map(r => r.requesting_doctor_wallet),
+        ...requests.map(r => r.source_doctor_wallet)
+      ])
+    ]
+
+    // Fetch doctor details
+    const { data: doctors } = await supabase
+      .from('users')
+      .select('wallet_address, full_name')
+      .in('wallet_address', doctorWallets)
+
+    const doctorMap = new Map<string, string>()
+    if (doctors) {
+      doctors.forEach(d => {
+        doctorMap.set(d.wallet_address, d.full_name || '')
+      })
+    }
+
+    // Get document titles
+    const allRecordIds = requests
+      .flatMap(r => r.requested_record_ids || [])
+      .filter((id, index, self) => self.indexOf(id) === index)
+
+    let recordMap = new Map<string, string>()
+    if (allRecordIds.length > 0) {
+      const { data: records } = await supabase
+        .from('health_records')
+        .select('id, title')
+        .in('id', allRecordIds)
+
+      if (records) {
+        records.forEach(r => {
+          recordMap.set(r.id, r.title || 'Untitled Document')
+        })
+      }
+    }
+
+    return requests.map(request => {
+      const documentNames = request.requested_record_ids?.map((id: string, index: number) => {
+        const liveTitle = recordMap.get(id)
+        if (liveTitle) return liveTitle
+        if (request.snapshot_document_titles?.[index]) {
+          return `${request.snapshot_document_titles[index]} (Deleted)`
+        }
+        return 'Unknown Document'
+      }) || []
+
+      return {
+        ...request,
+        requesting_doctor_name: doctorMap.get(request.requesting_doctor_wallet) || undefined,
+        source_doctor_name: doctorMap.get(request.source_doctor_wallet) || undefined,
+        document_names: documentNames
+      }
+    })
+  } catch (error) {
+    console.error('Error fetching transfer requests for patient:', error)
+    return []
+  }
+}
+
+/**
+ * Get incoming transfer requests for source doctor (Doctor A)
+ * Shows all requests where Doctor A needs to respond (upload or reject)
+ */
+export async function getTransferRequestsForSourceDoctor(
+  sourceDoctorWallet: string
+): Promise<TransferRequestWithNames[]> {
+  try {
+    // Show all incoming requests (any status)
+    const { data: requests, error: requestsError } = await supabase
+      .from('transfer_requests')
+      .select('*')
+      .eq('source_doctor_wallet', sourceDoctorWallet.toLowerCase())
+      .order('created_at', { ascending: false })
+
+    if (requestsError) throw requestsError
+    if (!requests || requests.length === 0) return []
+
+    // Get unique wallet addresses
+    const wallets = [
+      ...new Set([
+        ...requests.map(r => r.patient_wallet),
+        ...requests.map(r => r.requesting_doctor_wallet)
+      ])
+    ]
+
+    // Fetch user details
+    const { data: users } = await supabase
+      .from('users')
+      .select('wallet_address, full_name')
+      .in('wallet_address', wallets)
+
+    const userMap = new Map<string, string>()
+    if (users) {
+      users.forEach(u => {
+        userMap.set(u.wallet_address, u.full_name || '')
+      })
+    }
+
+    // Get document titles
+    const allRecordIds = requests
+      .flatMap(r => r.requested_record_ids || [])
+      .filter((id, index, self) => self.indexOf(id) === index)
+
+    let recordMap = new Map<string, string>()
+    if (allRecordIds.length > 0) {
+      const { data: records } = await supabase
+        .from('health_records')
+        .select('id, title')
+        .in('id', allRecordIds)
+
+      if (records) {
+        records.forEach(r => {
+          recordMap.set(r.id, r.title || 'Untitled Document')
+        })
+      }
+    }
+
+    return requests.map(request => {
+      const documentNames = request.requested_record_ids?.map((id: string, index: number) => {
+        const liveTitle = recordMap.get(id)
+        if (liveTitle) return liveTitle
+        if (request.snapshot_document_titles?.[index]) {
+          return `${request.snapshot_document_titles[index]} (Deleted)`
+        }
+        return 'Unknown Document'
+      }) || []
+
+      return {
+        ...request,
+        patient_name: userMap.get(request.patient_wallet) || undefined,
+        requesting_doctor_name: userMap.get(request.requesting_doctor_wallet) || undefined,
+        document_names: documentNames
+      }
+    })
+  } catch (error) {
+    console.error('Error fetching transfer requests for source doctor:', error)
+    return []
+  }
+}
+
+/**
+ * Get transfer requests made by requesting doctor
+ */
+export async function getTransferRequestsForRequestingDoctor(
+  requestingDoctorWallet: string
+): Promise<TransferRequestWithNames[]> {
+  try {
+    const { data: requests, error: requestsError } = await supabase
+      .from('transfer_requests')
+      .select('*')
+      .eq('requesting_doctor_wallet', requestingDoctorWallet.toLowerCase())
+      .order('created_at', { ascending: false })
+
+    if (requestsError) throw requestsError
+    if (!requests || requests.length === 0) return []
+
+    // Get unique wallet addresses
+    const wallets = [
+      ...new Set([
+        ...requests.map(r => r.patient_wallet),
+        ...requests.map(r => r.source_doctor_wallet)
+      ])
+    ]
+
+    // Fetch user details
+    const { data: users } = await supabase
+      .from('users')
+      .select('wallet_address, full_name')
+      .in('wallet_address', wallets)
+
+    const userMap = new Map<string, string>()
+    if (users) {
+      users.forEach(u => {
+        userMap.set(u.wallet_address, u.full_name || '')
+      })
+    }
+
+    // Get document titles
+    const allRecordIds = requests
+      .flatMap(r => r.requested_record_ids || [])
+      .filter((id, index, self) => self.indexOf(id) === index)
+
+    let recordMap = new Map<string, string>()
+    if (allRecordIds.length > 0) {
+      const { data: records } = await supabase
+        .from('health_records')
+        .select('id, title')
+        .in('id', allRecordIds)
+
+      if (records) {
+        records.forEach(r => {
+          recordMap.set(r.id, r.title || 'Untitled Document')
+        })
+      }
+    }
+
+    return requests.map(request => {
+      const documentNames = request.requested_record_ids?.map((id: string, index: number) => {
+        const liveTitle = recordMap.get(id)
+        if (liveTitle) return liveTitle
+        if (request.snapshot_document_titles?.[index]) {
+          return `${request.snapshot_document_titles[index]} (Deleted)`
+        }
+        return 'Unknown Document'
+      }) || []
+
+      return {
+        ...request,
+        patient_name: userMap.get(request.patient_wallet) || undefined,
+        source_doctor_name: userMap.get(request.source_doctor_wallet) || undefined,
+        document_names: documentNames
+      }
+    })
+  } catch (error) {
+    console.error('Error fetching transfer requests for requesting doctor:', error)
+    return []
+  }
+}
+
+/**
+ * Patient approves or denies a transfer request
+ * When patient approves, the transfer is granted (Doctor B can access)
+ */
+export async function updateTransferRequestPatientStatus(
+  requestId: string,
+  status: 'approved' | 'denied',
+  denialReason?: string
+): Promise<TransferRequest | null> {
+  try {
+    const updateData: Record<string, unknown> = {
+      patient_status: status,
+      patient_responded_at: new Date().toISOString()
+    }
+
+    if (status === 'approved') {
+      // When patient approves, transfer is granted
+      updateData.source_status = 'granted'
+      updateData.source_responded_at = new Date().toISOString()
+    } else if (status === 'denied' && denialReason) {
+      updateData.patient_denial_reason = denialReason
+    }
+
+    const { data, error } = await supabase
+      .from('transfer_requests')
+      .update(updateData)
+      .eq('id', requestId)
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  } catch (error) {
+    console.error('Error updating transfer request patient status:', error)
+    return null
+  }
+}
+
+/**
+ * Source doctor marks transfer as granted or failed
+ */
+export async function updateTransferRequestSourceStatus(
+  requestId: string,
+  status: 'granted' | 'failed',
+  failureReason?: string
+): Promise<TransferRequest | null> {
+  try {
+    const updateData: Record<string, unknown> = {
+      source_status: status,
+      source_responded_at: new Date().toISOString()
+    }
+
+    if (status === 'failed' && failureReason) {
+      updateData.source_failure_reason = failureReason
+    }
+
+    const { data, error } = await supabase
+      .from('transfer_requests')
+      .update(updateData)
+      .eq('id', requestId)
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  } catch (error) {
+    console.error('Error updating transfer request source status:', error)
+    return null
+  }
+}
+
+/**
+ * Get a single transfer request by ID
+ */
+export async function getTransferRequestById(
+  requestId: string
+): Promise<TransferRequest | null> {
+  try {
+    const { data, error } = await supabase
+      .from('transfer_requests')
+      .select('*')
+      .eq('id', requestId)
+      .single()
+
+    if (error) {
+      if (error.code === 'PGRST116') return null
+      throw error
+    }
+    return data
+  } catch (error) {
+    console.error('Error fetching transfer request:', error)
+    return null
+  }
+}
+
+/**
+ * Doctor A rejects a transfer request (before uploading)
+ * Called when Doctor A cannot or will not provide the requested document
+ */
+export async function rejectTransferRequest(
+  requestId: string,
+  rejectionReason: string
+): Promise<TransferRequest | null> {
+  try {
+    const { data, error } = await supabase
+      .from('transfer_requests')
+      .update({
+        source_status: 'rejected',
+        source_rejection_reason: rejectionReason,
+        source_responded_at: new Date().toISOString()
+      })
+      .eq('id', requestId)
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  } catch (error) {
+    console.error('Error rejecting transfer request:', error)
+    return null
+  }
+}
+
+/**
+ * Doctor A attaches uploaded document to transfer request
+ * Called after Doctor A uploads the document to IPFS
+ */
+export async function attachDocumentToTransfer(
+  requestId: string,
+  recordId: string,
+  documentTitle: string
+): Promise<TransferRequest | null> {
+  try {
+    const { data, error } = await supabase
+      .from('transfer_requests')
+      .update({
+        requested_record_ids: [recordId],
+        snapshot_document_titles: [documentTitle],
+        source_status: 'uploaded',
+        source_responded_at: new Date().toISOString()
+      })
+      .eq('id', requestId)
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  } catch (error) {
+    console.error('Error attaching document to transfer:', error)
+    return null
   }
 }
