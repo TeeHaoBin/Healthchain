@@ -332,7 +332,7 @@ export default function PatientRequestsPage() {
 
   // Count pending requests
   const pendingDirectCount = requests.filter(r => r.status === 'sent' || r.status === 'draft').length
-  const pendingTransferCount = transferRequests.filter(r => r.patient_status === 'pending').length
+  const pendingTransferCount = transferRequests.filter(r => r.source_status === 'uploaded' && r.patient_status === 'pending').length
 
   return (
     <RoleGuard allowedRoles={['patient']}>
