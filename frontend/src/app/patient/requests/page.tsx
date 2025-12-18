@@ -404,7 +404,7 @@ export default function PatientRequestsPage() {
                           {/* Requesting Doctor */}
                           <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
                             <User className="h-4 w-4" />
-                            <span>Requesting:</span>
+                            <span className="min-w-[70px]">Requester:</span>
                             <span className="font-medium text-gray-900">
                               {request.requesting_doctor_name || request.requesting_doctor_wallet.slice(0, 8) + '...'}
                             </span>
@@ -413,7 +413,7 @@ export default function PatientRequestsPage() {
                           {/* Source Doctor */}
                           <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
                             <ArrowRight className="h-4 w-4" />
-                            <span>From:</span>
+                            <span className="min-w-[70px]">Provider:</span>
                             <span className="font-medium text-gray-900">
                               {request.source_doctor_name || request.source_doctor_wallet.slice(0, 8) + '...'}
                               {request.source_organization && ` (${request.source_organization})`}
