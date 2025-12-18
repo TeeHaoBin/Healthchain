@@ -770,7 +770,7 @@ export async function getTransferRequestsForPatient(
       .from('transfer_requests')
       .select('*')
       .eq('patient_wallet', patientWallet.toLowerCase())
-      .in('source_status', ['uploaded', 'granted', 'failed'])  // Only after Doctor A uploads
+      .in('source_status', ['uploaded', 'granted', 'failed', 'rejected'])  // Show all actionable statuses including rejections
       .order('created_at', { ascending: false })
 
     if (requestsError) throw requestsError
