@@ -78,7 +78,8 @@ export interface TransferRequest {
   patient_wallet: string
   requesting_doctor_wallet: string  // Doctor B - wants the document
   source_doctor_wallet: string       // Doctor A - has the document
-  source_organization?: string
+  source_organization?: string        // Snapshot of Doctor A's organization at request time
+  requesting_organization?: string    // Snapshot of Doctor B's organization at request time
   document_description?: string      // What document is being requested
   requested_record_ids?: string[]    // Filled after Doctor A uploads
   snapshot_document_titles?: string[]
@@ -757,12 +758,19 @@ export async function createTransferRequest(requestData: {
   patient_wallet: string
   requesting_doctor_wallet: string  // Doctor B
   source_doctor_wallet: string       // Doctor A
-  source_organization?: string
+  source_organization?: string       // Auto-fetched if not provided
   document_description: string       // What document is needed
   purpose: string
   urgency?: 'routine' | 'urgent' | 'emergency'
 }): Promise<TransferRequest | null> {
   try {
+    // Auto-fetch requesting doctor's organization if not provided
+    let requestingOrganization: string | undefined
+    const requestingProfile = await getDoctorProfileByWallet(requestData.requesting_doctor_wallet)
+    if (requestingProfile?.hospital_name) {
+      requestingOrganization = requestingProfile.hospital_name
+    }
+
     const { data, error } = await supabase
       .from('transfer_requests')
       .insert([{
@@ -770,6 +778,7 @@ export async function createTransferRequest(requestData: {
         requesting_doctor_wallet: requestData.requesting_doctor_wallet.toLowerCase(),
         source_doctor_wallet: requestData.source_doctor_wallet.toLowerCase(),
         source_organization: requestData.source_organization,
+        requesting_organization: requestingOrganization,
         document_description: requestData.document_description,
         purpose: requestData.purpose,
         urgency: requestData.urgency || 'routine',

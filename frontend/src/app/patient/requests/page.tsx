@@ -416,6 +416,7 @@ export default function PatientRequestsPage() {
                             <span className="min-w-[70px]">Requester:</span>
                             <span className="font-medium text-gray-900">
                               {request.requesting_doctor_name || request.requesting_doctor_wallet.slice(0, 8) + '...'}
+                              {request.requesting_organization && ` (${request.requesting_organization})`}
                             </span>
                           </div>
 
