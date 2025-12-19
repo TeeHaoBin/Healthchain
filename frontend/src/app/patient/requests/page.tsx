@@ -446,9 +446,9 @@ export default function PatientRequestsPage() {
               <Tabs value={transferStatusFilter} onValueChange={(v) => setTransferStatusFilter(v as typeof transferStatusFilter)} className="mb-4">
                 <TabsList className="grid w-full grid-cols-5">
                   <TabsTrigger value="all">All ({transferFilterCounts.all})</TabsTrigger>
-                  <TabsTrigger value="pending">Pending ({transferFilterCounts.pending})</TabsTrigger>
-                  <TabsTrigger value="approved">Approved ({transferFilterCounts.approved})</TabsTrigger>
-                  <TabsTrigger value="denied">Denied ({transferFilterCounts.denied})</TabsTrigger>
+                  <TabsTrigger value="pending">Pending Your Approval ({transferFilterCounts.pending})</TabsTrigger>
+                  <TabsTrigger value="approved">You Approved ({transferFilterCounts.approved})</TabsTrigger>
+                  <TabsTrigger value="denied">You Denied ({transferFilterCounts.denied})</TabsTrigger>
                   <TabsTrigger value="rejected">Provider Rejected ({transferFilterCounts.rejected})</TabsTrigger>
                 </TabsList>
               </Tabs>
