@@ -688,6 +688,155 @@ export async function logAccess(logData: {
 }
 
 // Admin Functions
+
+export interface AdminStats {
+  totalUsers: number
+  totalDoctors: number      // verified doctors only
+  totalPatients: number
+  pendingVerifications: number
+  totalRecords: number
+}
+
+/**
+ * Get dashboard statistics for admin panel
+ * Fetches counts from users, doctor_profiles, and health_records tables
+ */
+export async function getAdminStats(): Promise<AdminStats> {
+  try {
+    // Run all queries in parallel for efficiency
+    const [usersResult, doctorsResult, patientsResult, pendingResult, recordsResult] = await Promise.all([
+      // Total users count (excluding admins)
+      supabase
+        .from('users')
+        .select('id', { count: 'exact', head: true })
+        .neq('role', 'admin'),
+
+      // Verified/approved doctors count (from doctor_profiles)
+      supabase
+        .from('doctor_profiles')
+        .select('id', { count: 'exact', head: true })
+        .eq('verification_status', 'approved'),
+
+      // Total patients count
+      supabase
+        .from('users')
+        .select('id', { count: 'exact', head: true })
+        .eq('role', 'patient'),
+
+      // Pending verifications count
+      supabase
+        .from('doctor_profiles')
+        .select('id', { count: 'exact', head: true })
+        .eq('verification_status', 'pending'),
+
+      // Total health records count
+      supabase.from('health_records').select('id', { count: 'exact', head: true })
+    ])
+
+    return {
+      totalUsers: usersResult.count || 0,
+      totalDoctors: doctorsResult.count || 0,
+      totalPatients: patientsResult.count || 0,
+      pendingVerifications: pendingResult.count || 0,
+      totalRecords: recordsResult.count || 0
+    }
+  } catch (error) {
+    console.error('Error fetching admin stats:', error)
+    return {
+      totalUsers: 0,
+      totalDoctors: 0,
+      totalPatients: 0,
+      pendingVerifications: 0,
+      totalRecords: 0
+    }
+  }
+}
+
+export interface DoctorVerificationStats {
+  totalDoctors: number      // all users with role = 'doctor'
+  verifiedDoctors: number   // doctor_profiles with verification_status = 'approved'
+  pendingDoctors: number    // doctor_profiles with verification_status = 'pending'
+  rejectedDoctors: number   // doctor_profiles with verification_status = 'rejected'
+}
+
+/**
+ * Get verification stats for the admin verify page
+ */
+export async function getDoctorVerificationStats(): Promise<DoctorVerificationStats> {
+  try {
+    const [totalResult, verifiedResult, pendingResult, rejectedResult] = await Promise.all([
+      supabase
+        .from('users')
+        .select('id', { count: 'exact', head: true })
+        .eq('role', 'doctor'),
+
+      supabase
+        .from('doctor_profiles')
+        .select('id', { count: 'exact', head: true })
+        .eq('verification_status', 'approved'),
+
+      supabase
+        .from('doctor_profiles')
+        .select('id', { count: 'exact', head: true })
+        .eq('verification_status', 'pending'),
+
+      supabase
+        .from('doctor_profiles')
+        .select('id', { count: 'exact', head: true })
+        .eq('verification_status', 'rejected')
+    ])
+
+    return {
+      totalDoctors: totalResult.count || 0,
+      verifiedDoctors: verifiedResult.count || 0,
+      pendingDoctors: pendingResult.count || 0,
+      rejectedDoctors: rejectedResult.count || 0
+    }
+  } catch (error) {
+    console.error('Error fetching doctor verification stats:', error)
+    return { totalDoctors: 0, verifiedDoctors: 0, pendingDoctors: 0, rejectedDoctors: 0 }
+  }
+}
+
+export interface DoctorWithProfile {
+  id: string
+  license_number?: string
+  specialization?: string
+  hospital_name?: string
+  verification_status: 'pending' | 'approved' | 'rejected' | 'suspended'
+  verification_documents?: any
+  created_at: string
+  verified_at?: string
+  user: {
+    id: string
+    wallet_address: string
+    email?: string
+    full_name?: string
+  }
+}
+
+/**
+ * Get all doctor verifications (pending, approved, rejected)
+ * Used for admin verify page with filtering
+ */
+export async function getAllDoctorVerifications(): Promise<DoctorWithProfile[]> {
+  try {
+    const { data, error } = await supabase
+      .from('doctor_profiles')
+      .select(`
+        *,
+        user:user_id(*)
+      `)
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+    return data || []
+  } catch (error) {
+    console.error('Error fetching all doctor verifications:', error)
+    return []
+  }
+}
+
 export async function getPendingDoctorVerifications(): Promise<any[]> {
   try {
     const { data, error } = await supabase
@@ -710,33 +859,47 @@ export async function getPendingDoctorVerifications(): Promise<any[]> {
 export async function verifyDoctor(
   profileId: string,
   status: 'approved' | 'rejected',
-  verifiedBy: string
+  verifiedBy?: string
 ): Promise<boolean> {
   try {
+    // Build update object - only include verified_by if it's a valid UUID
+    const updateData: {
+      verification_status: string
+      verified_at: string
+      verified_by?: string
+    } = {
+      verification_status: status,
+      verified_at: new Date().toISOString()
+    }
+
+    // Only set verified_by if it looks like a valid UUID
+    if (verifiedBy && verifiedBy.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+      updateData.verified_by = verifiedBy
+    }
+
     const { error } = await supabase
       .from('doctor_profiles')
-      .update({
-        verification_status: status,
-        verified_at: new Date().toISOString(),
-        verified_by: verifiedBy
-      })
+      .update(updateData)
       .eq('id', profileId)
 
     if (error) throw error
 
     // Also update user profile completion status
     if (status === 'approved') {
-      const { error: userError } = await supabase
-        .from('users')
-        .update({ profile_complete: true })
-        .eq('id', (await supabase
-          .from('doctor_profiles')
-          .select('user_id')
-          .eq('id', profileId)
-          .single()
-        ).data?.user_id)
+      const { data: profileData } = await supabase
+        .from('doctor_profiles')
+        .select('user_id')
+        .eq('id', profileId)
+        .single()
 
-      if (userError) throw userError
+      if (profileData?.user_id) {
+        const { error: userError } = await supabase
+          .from('users')
+          .update({ profile_complete: true })
+          .eq('id', profileData.user_id)
+
+        if (userError) throw userError
+      }
     }
 
     return true

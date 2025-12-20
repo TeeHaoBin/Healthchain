@@ -4,149 +4,98 @@ import { useState, useEffect } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
 import {
   Users,
   UserCheck,
   Shield,
-  Activity,
-  Search,
   Eye,
-  CheckCircle,
-  XCircle,
   AlertTriangle,
-  BarChart3
+  FileText,
+  Loader2,
+  ArrowRight
 } from 'lucide-react'
+import {
+  getAdminStats,
+  getPendingDoctorVerifications,
+  AdminStats
+} from '@/lib/supabase/helpers'
+import { useToast } from '@/components/ui/use-toast'
+import Link from 'next/link'
 
-interface Doctor {
+interface PendingDoctor {
   id: string
-  name: string
-  email: string
-  specialization: string
-  hospital: string
-  licenseNumber: string
-  verificationStatus: 'pending' | 'verified' | 'rejected'
-  submitDate: string
-  documents: string[]
-}
-
-interface SystemStats {
-  totalUsers: number
-  totalDoctors: number
-  totalPatients: number
-  pendingVerifications: number
-  totalRecords: number
-  recentActivity: number
+  license_number?: string
+  specialization?: string
+  hospital_name?: string
+  verification_status: string
+  created_at: string
+  user: {
+    id: string
+    wallet_address: string
+    email?: string
+    full_name?: string
+  }
 }
 
 export default function AdminDashboard() {
-  const [doctors, setDoctors] = useState<Doctor[]>([])
-  const [stats, setStats] = useState<SystemStats>({
+  const { toast } = useToast()
+  const [pendingDoctors, setPendingDoctors] = useState<PendingDoctor[]>([])
+  const [stats, setStats] = useState<AdminStats>({
     totalUsers: 0,
     totalDoctors: 0,
     totalPatients: 0,
     pendingVerifications: 0,
-    totalRecords: 0,
-    recentActivity: 0
+    totalRecords: 0
   })
-  const [searchTerm, setSearchTerm] = useState('')
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Mock data - replace with actual API calls
-    setDoctors([
-      {
-        id: '1',
-        name: 'Dr. Sarah Wilson',
-        email: 'sarah.wilson@hospital.com',
-        specialization: 'Cardiology',
-        hospital: 'City General Hospital',
-        licenseNumber: 'MD-2024-001',
-        verificationStatus: 'pending',
-        submitDate: '2024-01-16',
-        documents: ['medical_license.pdf', 'hospital_verification.pdf', 'id_document.pdf']
-      },
-      {
-        id: '2',
-        name: 'Dr. Michael Chen',
-        email: 'michael.chen@medcenter.com',
-        specialization: 'Neurology',
-        hospital: 'Specialist Care Center',
-        licenseNumber: 'MD-2024-002',
-        verificationStatus: 'pending',
-        submitDate: '2024-01-15',
-        documents: ['medical_license.pdf', 'specialization_cert.pdf']
-      },
-      {
-        id: '3',
-        name: 'Dr. Emily Rodriguez',
-        email: 'emily.rodriguez@clinic.com',
-        specialization: 'Pediatrics',
-        hospital: 'Children\'s Medical Clinic',
-        licenseNumber: 'MD-2024-003',
-        verificationStatus: 'verified',
-        submitDate: '2024-01-10',
-        documents: ['medical_license.pdf', 'hospital_verification.pdf']
-      }
-    ])
-
-    setStats({
-      totalUsers: 156,
-      totalDoctors: 23,
-      totalPatients: 133,
-      pendingVerifications: 2,
-      totalRecords: 1247,
-      recentActivity: 18
-    })
+    fetchDashboardData()
   }, [])
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'verified': return 'bg-green-100 text-green-800'
-      case 'pending': return 'bg-yellow-100 text-yellow-800'
-      case 'rejected': return 'bg-red-100 text-red-800'
-      default: return 'bg-gray-100 text-gray-800'
+  const fetchDashboardData = async () => {
+    setLoading(true)
+    try {
+      const [statsData, pendingData] = await Promise.all([
+        getAdminStats(),
+        getPendingDoctorVerifications()
+      ])
+
+      setStats(statsData)
+      setPendingDoctors(pendingData)
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error)
+      toast({
+        title: "Error",
+        description: "Failed to load dashboard data",
+        variant: "destructive"
+      })
+    } finally {
+      setLoading(false)
     }
   }
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'verified': return <CheckCircle className="h-4 w-4" />
-      case 'pending': return <AlertTriangle className="h-4 w-4" />
-      case 'rejected': return <XCircle className="h-4 w-4" />
-      default: return <AlertTriangle className="h-4 w-4" />
-    }
-  }
-
-  const filteredDoctors = doctors.filter(doctor =>
-    doctor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    doctor.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    doctor.specialization.toLowerCase().includes(searchTerm.toLowerCase())
-  )
-
-  const handleVerifyDoctor = (doctorId: string, action: 'verify' | 'reject') => {
-    setDoctors(prev => prev.map(doctor =>
-      doctor.id === doctorId
-        ? { ...doctor, verificationStatus: action === 'verify' ? 'verified' : 'rejected' }
-        : doctor
-    ))
+  if (loading) {
+    return (
+      <div className="container mx-auto p-6 flex items-center justify-center min-h-[400px]">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <p className="text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-          <p className="text-gray-600 mt-1">System administration and user management</p>
-        </div>
-        <Button className="flex items-center gap-2">
-          <BarChart3 className="h-4 w-4" />
-          Generate Report
-        </Button>
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+        <p className="text-gray-600 mt-1">System overview and quick access</p>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <Card>
           <CardContent className="flex items-center p-4">
             <Users className="h-6 w-6 text-blue-600" />
@@ -161,7 +110,7 @@ export default function AdminDashboard() {
           <CardContent className="flex items-center p-4">
             <UserCheck className="h-6 w-6 text-green-600" />
             <div className="ml-3">
-              <p className="text-xs font-medium text-gray-600">Doctors</p>
+              <p className="text-xs font-medium text-gray-600">Verified Doctors</p>
               <p className="text-xl font-bold text-gray-900">{stats.totalDoctors}</p>
             </div>
           </CardContent>
@@ -177,122 +126,98 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className={stats.pendingVerifications > 0 ? "ring-2 ring-yellow-400" : ""}>
           <CardContent className="flex items-center p-4">
-            <AlertTriangle className="h-6 w-6 text-yellow-600" />
+            <AlertTriangle className={`h-6 w-6 ${stats.pendingVerifications > 0 ? 'text-yellow-600' : 'text-gray-400'}`} />
             <div className="ml-3">
-              <p className="text-xs font-medium text-gray-600">Pending</p>
-              <p className="text-xl font-bold text-gray-900">{stats.pendingVerifications}</p>
+              <p className="text-xs font-medium text-gray-600">Pending Verification</p>
+              <p className={`text-xl font-bold ${stats.pendingVerifications > 0 ? 'text-yellow-600' : 'text-gray-900'}`}>
+                {stats.pendingVerifications}
+              </p>
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardContent className="flex items-center p-4">
-            <Shield className="h-6 w-6 text-indigo-600" />
+            <FileText className="h-6 w-6 text-indigo-600" />
             <div className="ml-3">
               <p className="text-xs font-medium text-gray-600">Records</p>
               <p className="text-xl font-bold text-gray-900">{stats.totalRecords}</p>
             </div>
           </CardContent>
         </Card>
-
-        <Card>
-          <CardContent className="flex items-center p-4">
-            <Activity className="h-6 w-6 text-red-600" />
-            <div className="ml-3">
-              <p className="text-xs font-medium text-gray-600">Activity</p>
-              <p className="text-xl font-bold text-gray-900">{stats.recentActivity}</p>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
-      {/* Doctor Verification Section */}
+      {/* Pending Verifications Preview */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <UserCheck className="h-5 w-5" />
-            Doctor Verification Queue
-          </CardTitle>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <Input
-              placeholder="Search doctors..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <UserCheck className="h-5 w-5" />
+              Pending Verifications
+              {stats.pendingVerifications > 0 && (
+                <Badge className="bg-yellow-100 text-yellow-800 ml-2">
+                  {stats.pendingVerifications}
+                </Badge>
+              )}
+            </CardTitle>
+            <Link href="/admin/verify">
+              <Button className="flex items-center gap-2">
+                View All
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {filteredDoctors.map((doctor) => (
-              <div key={doctor.id} className="p-4 border rounded-lg">
-                <div className="flex items-start justify-between">
+          {pendingDoctors.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <Shield className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+              <p>No pending doctor verifications</p>
+              <p className="text-sm mt-1">All doctors have been reviewed</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {pendingDoctors.slice(0, 3).map((doctor) => (
+                <div
+                  key={doctor.id}
+                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                >
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <h3 className="font-semibold text-gray-900">{doctor.name}</h3>
-                      <Badge className={getStatusColor(doctor.verificationStatus)}>
-                        {getStatusIcon(doctor.verificationStatus)}
-                        <span className="ml-1">{doctor.verificationStatus}</span>
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-semibold text-gray-900">
+                        {doctor.user?.full_name || 'Unknown Doctor'}
+                      </h3>
+                      <Badge className="bg-yellow-100 text-yellow-800 text-xs">
+                        Pending
                       </Badge>
                     </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
-                      <div>
-                        <p><strong>Email:</strong> {doctor.email}</p>
-                        <p><strong>Specialization:</strong> {doctor.specialization}</p>
-                        <p><strong>Hospital:</strong> {doctor.hospital}</p>
-                      </div>
-                      <div>
-                        <p><strong>License:</strong> {doctor.licenseNumber}</p>
-                        <p><strong>Submitted:</strong> {doctor.submitDate}</p>
-                        <p><strong>Documents:</strong> {doctor.documents.length} files</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 mt-3">
-                      <span className="text-sm text-gray-600">Documents:</span>
-                      {doctor.documents.map((doc, index) => (
-                        <Badge key={index} variant="outline" className="text-xs">
-                          {doc}
-                        </Badge>
-                      ))}
+                    <div className="text-sm text-gray-600 flex flex-wrap gap-x-4 gap-y-1">
+                      <span>{doctor.specialization || 'No specialization'}</span>
+                      <span>•</span>
+                      <span>{doctor.hospital_name || 'No organization'}</span>
                     </div>
                   </div>
 
-                  <div className="flex flex-col gap-2 ml-4">
+                  <Link href="/admin/verify">
                     <Button size="sm" variant="outline" className="flex items-center gap-1">
-                      <Eye className="h-3 w-3" />
-                      Review
+                      <Eye className="h-4 w-4" />
+                      View
                     </Button>
-
-                    {doctor.verificationStatus === 'pending' && (
-                      <div className="flex gap-1">
-                        <Button
-                          size="sm"
-                          className="flex items-center gap-1"
-                          onClick={() => handleVerifyDoctor(doctor.id, 'verify')}
-                        >
-                          <CheckCircle className="h-3 w-3" />
-                          Verify
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleVerifyDoctor(doctor.id, 'reject')}
-                        >
-                          <XCircle className="h-3 w-3" />
-                          Reject
-                        </Button>
-                      </div>
-                    )}
-                  </div>
+                  </Link>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+
+              {pendingDoctors.length > 3 && (
+                <div className="text-center pt-2">
+                  <p className="text-sm text-gray-500">
+                    +{pendingDoctors.length - 3} more pending verifications
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
