@@ -298,7 +298,7 @@ export default function DoctorDashboard() {
             ) : (
               <div className="space-y-3">
                 {recentDocsList.map(doc => {
-                  const fileType = getFileTypeBadge(doc.mimeType)
+                  const fileType = getFileTypeBadge(doc.fileType)
                   return (
                     <div
                       key={doc.id}
@@ -370,7 +370,7 @@ export default function DoctorDashboard() {
                   <CheckCircle2 className="h-6 w-6 text-green-600" />
                 </div>
                 <p className="text-gray-500">No pending actions</p>
-                <p className="text-sm text-gray-400 mt-1">You're all caught up!</p>
+                <p className="text-sm text-gray-400 mt-1">You&apos;re all caught up!</p>
               </div>
             ) : (
               <div className="space-y-3">

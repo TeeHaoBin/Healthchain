@@ -759,7 +759,7 @@ export default function DoctorHistoryPage() {
                       {fetchingPatientName ? (
                         <><Loader2 className="h-3 w-3 animate-spin" /> Looking up patient...</>
                       ) : fetchedPatientName ? (
-                        <>Patient's Name: <span className="font-medium text-gray-700">{fetchedPatientName}</span></>
+                        <>Patient&apos;s Name: <span className="font-medium text-gray-700">{fetchedPatientName}</span></>
                       ) : (
                         <span className="text-gray-400 italic">Patient not found in system</span>
                       )}
@@ -784,7 +784,7 @@ export default function DoctorHistoryPage() {
                         {fetchingSourceDoctorName ? (
                           <span className="flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> Looking up provider...</span>
                         ) : fetchedSourceDoctorName ? (
-                          <><span className="inline-block w-[175px]">Source Provider's Name:</span><span className="font-medium text-gray-700">{fetchedSourceDoctorName}</span></>
+                          <><span className="inline-block w-[175px]">Source Provider&apos;s Name:</span><span className="font-medium text-gray-700">{fetchedSourceDoctorName}</span></>
                         ) : (
                           <span className="text-gray-400 italic">Provider not found in system</span>
                         )}

@@ -98,15 +98,18 @@ Issued At: ${new Date().toISOString()}`
 
       if (authResult?.user) {
         // User exists and is authenticated
-        console.log('✅ User authenticated successfully:', existingUser)
+        const user = existingUser || authResult.user
+        console.log('✅ User authenticated successfully:', user)
 
         // Update last login timestamp
-        await updateLastLogin(existingUser.id)
+        if (existingUser) {
+          await updateLastLogin(existingUser.id)
+        }
 
         // Store auth state in localStorage WITH session token
         const authData = {
           wallet: address,
-          user: existingUser || authResult.user,
+          user: user,
           sessionToken: authResult.session_token, // ← THIS IS THE KEY FIX!
           timestamp: Date.now()
         }
@@ -116,16 +119,16 @@ Issued At: ${new Date().toISOString()}`
         // Set authenticated state
         setAuthState({
           step: 'complete',
-          user: existingUser,
+          user: user,
           isAuthenticated: true
         })
 
         // Redirect existing users to their dashboard
         setTimeout(() => {
-          console.log('🔄 Redirecting existing user to dashboard for role:', existingUser.role)
+          console.log('🔄 Redirecting existing user to dashboard for role:', user.role)
           let dashboardPath = '/dashboard'
 
-          switch (existingUser.role) {
+          switch (user.role) {
             case 'patient':
               dashboardPath = '/patient/dashboard'
               break

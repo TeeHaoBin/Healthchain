@@ -149,7 +149,7 @@ export function useRole(): UseRoleReturn {
                 console.log('🔐 useRole: Found custom session token, validating...')
 
                 const validationResult = await logoutStateManager.blockAuthDuringLogout(
-                  () => supabase.rpc('validate_session_and_get_user', {
+                  async () => await supabase.rpc('validate_session_and_get_user', {
                     p_session_token: sessionToken
                   }),
                   'Custom session validation'

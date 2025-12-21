@@ -2,7 +2,7 @@
 // Note: This is a simplified implementation. In production, use Lit Protocol or similar
 
 export class EncryptionService {
-  
+
   // Generate a random encryption key
   async generateKey(): Promise<CryptoKey> {
     return await window.crypto.subtle.generateKey(
@@ -40,11 +40,11 @@ export class EncryptionService {
   async encryptFile(file: File, key: CryptoKey): Promise<{ encryptedData: ArrayBuffer; iv: Uint8Array }> {
     const iv = window.crypto.getRandomValues(new Uint8Array(12))
     const fileData = await file.arrayBuffer()
-    
+
     const encryptedData = await window.crypto.subtle.encrypt(
       {
         name: 'AES-GCM',
-        iv: iv,
+        iv: iv as BufferSource,
       },
       key,
       fileData
@@ -58,7 +58,7 @@ export class EncryptionService {
     return await window.crypto.subtle.decrypt(
       {
         name: 'AES-GCM',
-        iv: iv,
+        iv: iv as BufferSource,
       },
       key,
       encryptedData
@@ -71,7 +71,7 @@ export class EncryptionService {
     const combined = new Uint8Array(iv.length + encryptedData.byteLength)
     combined.set(iv)
     combined.set(new Uint8Array(encryptedData), iv.length)
-    
+
     return new Blob([combined], { type: 'application/octet-stream' })
   }
 
@@ -79,10 +79,10 @@ export class EncryptionService {
   async extractFromBlob(blob: Blob): Promise<{ encryptedData: ArrayBuffer; iv: Uint8Array }> {
     const arrayBuffer = await blob.arrayBuffer()
     const combined = new Uint8Array(arrayBuffer)
-    
+
     const iv = combined.slice(0, 12) // First 12 bytes are IV
     const encryptedData = combined.slice(12) // Rest is encrypted data
-    
+
     return { encryptedData: encryptedData.buffer, iv }
   }
 }

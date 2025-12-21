@@ -197,7 +197,7 @@ export default function PatientDashboard() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Patient Dashboard</h1>
           <p className="text-gray-600 mt-1">
-            Welcome back! Here's your health records overview.
+            Welcome back! Here&apos;s your health records overview.
           </p>
         </div>
         <Link href="/patient/upload">
@@ -363,7 +363,7 @@ export default function PatientDashboard() {
                   <CheckCircle2 className="h-6 w-6 text-green-600" />
                 </div>
                 <p className="text-gray-500">No pending requests</p>
-                <p className="text-sm text-gray-400 mt-1">You're all caught up!</p>
+                <p className="text-sm text-gray-400 mt-1">You&apos;re all caught up!</p>
               </div>
             ) : (
               <div className="space-y-3">
