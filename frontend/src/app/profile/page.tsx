@@ -39,6 +39,7 @@ import {
   getDoctorProfile,
   updateUser,
   updatePatientProfile,
+  updateDoctorProfile,
   User as UserType,
   PatientProfile,
   DoctorProfile
@@ -63,6 +64,11 @@ interface HealthFlagsForm {
   has_chronic_conditions: boolean
 }
 
+interface ProfessionalInfoForm {
+  specialization: string
+  hospital_name: string
+}
+
 export default function ProfilePage() {
   const { role, isAuthenticated } = useRole()
   const { address, isConnected, status } = useAccount()
@@ -81,6 +87,7 @@ export default function ProfilePage() {
   const [editingPersonal, setEditingPersonal] = useState(false)
   const [editingEmergency, setEditingEmergency] = useState(false)
   const [editingHealth, setEditingHealth] = useState(false)
+  const [editingProfessional, setEditingProfessional] = useState(false)
   const [saving, setSaving] = useState(false)
 
   // Form states
@@ -98,6 +105,10 @@ export default function ProfilePage() {
   const [healthForm, setHealthForm] = useState<HealthFlagsForm>({
     has_allergies: false,
     has_chronic_conditions: false
+  })
+  const [professionalForm, setProfessionalForm] = useState<ProfessionalInfoForm>({
+    specialization: '',
+    hospital_name: ''
   })
 
   const fetchProfileData = useCallback(async () => {
@@ -149,6 +160,14 @@ export default function ProfilePage() {
         } else if (userData.role === 'doctor') {
           const profile = await getDoctorProfile(userData.id)
           setDoctorProfile(profile)
+
+          // Initialize professional form with doctor profile data
+          if (profile) {
+            setProfessionalForm({
+              specialization: profile.specialization || '',
+              hospital_name: profile.hospital_name || ''
+            })
+          }
         }
       }
     } catch (error) {
@@ -347,6 +366,47 @@ export default function ProfilePage() {
     }
   }
 
+  // Doctor professional info functions
+  const cancelProfessionalEdit = () => {
+    setProfessionalForm({
+      specialization: doctorProfile?.specialization || '',
+      hospital_name: doctorProfile?.hospital_name || ''
+    })
+    setEditingProfessional(false)
+  }
+
+  const saveProfessionalInfo = async () => {
+    if (!user) return
+
+    setSaving(true)
+    try {
+      const updated = await updateDoctorProfile(user.id, {
+        specialization: professionalForm.specialization || undefined,
+        hospital_name: professionalForm.hospital_name || undefined
+      })
+
+      if (!updated) {
+        throw new Error('Failed to update professional information')
+      }
+
+      setDoctorProfile(updated)
+      setEditingProfessional(false)
+      toast({
+        title: 'Success',
+        description: 'Professional information updated successfully',
+      })
+    } catch (error) {
+      console.error('Failed to save professional info:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to update professional information',
+        variant: 'destructive',
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
   // Loading skeleton - also show while wagmi is reconnecting
   if (loading || !isWagmiReady) {
     return (
@@ -460,14 +520,19 @@ export default function ProfilePage() {
                 <div className="flex items-center justify-between py-2 border-b border-gray-100">
                   <div className="flex items-center gap-2 text-gray-600">
                     <User className="h-4 w-4" />
-                    <span className="text-sm">Full Name</span>
+                    <span className="text-sm">
+                      Full Name
+                      {role === 'doctor' && (
+                        <span className="text-xs text-gray-400 ml-1">(include title, e.g. Dr.)</span>
+                      )}
+                    </span>
                   </div>
                   {editingPersonal ? (
                     <Input
                       value={personalForm.full_name}
                       onChange={(e) => setPersonalForm(prev => ({ ...prev, full_name: e.target.value }))}
                       className="w-48 h-8 text-sm"
-                      placeholder="Enter full name"
+                      placeholder={role === 'doctor' ? "e.g. Dr. Jane Smith" : "Enter full name"}
                     />
                   ) : (
                     <span className="font-medium text-gray-900">{user.full_name || 'Not provided'}</span>
@@ -675,18 +740,57 @@ export default function ProfilePage() {
           {role === 'doctor' && doctorProfile && (
             <Card>
               <CardHeader className="pb-3">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 bg-green-100 rounded-lg">
-                    <Stethoscope className="h-5 w-5 text-green-600" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-green-100 rounded-lg">
+                      <Stethoscope className="h-5 w-5 text-green-600" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">Professional Information</CardTitle>
+                      <CardDescription>Your medical credentials</CardDescription>
+                    </div>
                   </div>
-                  <div>
-                    <CardTitle className="text-lg">Professional Information</CardTitle>
-                    <CardDescription>Your medical credentials</CardDescription>
-                  </div>
+                  {!editingProfessional ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setEditingProfessional(true)}
+                      className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                    >
+                      <Pencil className="h-4 w-4 mr-1" />
+                      Edit
+                    </Button>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={cancelProfessionalEdit}
+                        disabled={saving}
+                      >
+                        <X className="h-4 w-4 mr-1" />
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={saveProfessionalInfo}
+                        disabled={saving}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        {saving ? (
+                          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                        ) : (
+                          <Save className="h-4 w-4 mr-1" />
+                        )}
+                        Save
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
+                  {/* License Number - Read Only */}
                   <div className="flex items-center justify-between py-2 border-b border-gray-100">
                     <div className="flex items-center gap-2 text-gray-600">
                       <Award className="h-4 w-4" />
@@ -697,27 +801,48 @@ export default function ProfilePage() {
                     </span>
                   </div>
 
+                  {/* Specialization - Editable */}
                   <div className="flex items-center justify-between py-2 border-b border-gray-100">
                     <div className="flex items-center gap-2 text-gray-600">
                       <Stethoscope className="h-4 w-4" />
                       <span className="text-sm">Specialization</span>
                     </div>
-                    <span className="font-medium text-gray-900">
-                      {doctorProfile.specialization || 'Not provided'}
-                    </span>
+                    {editingProfessional ? (
+                      <Input
+                        value={professionalForm.specialization}
+                        onChange={(e) => setProfessionalForm(prev => ({ ...prev, specialization: e.target.value }))}
+                        className="w-48 h-8 text-sm"
+                        placeholder="Enter specialization"
+                      />
+                    ) : (
+                      <span className="font-medium text-gray-900">
+                        {doctorProfile.specialization || 'Not provided'}
+                      </span>
+                    )}
                   </div>
 
+                  {/* Hospital/Clinic - Editable */}
                   <div className="flex items-center justify-between py-2 border-b border-gray-100">
                     <div className="flex items-center gap-2 text-gray-600">
                       <Building className="h-4 w-4" />
                       <span className="text-sm">Hospital/Clinic</span>
                     </div>
-                    <span className="font-medium text-gray-900">
-                      {doctorProfile.hospital_name || 'Not provided'}
-                    </span>
+                    {editingProfessional ? (
+                      <Input
+                        value={professionalForm.hospital_name}
+                        onChange={(e) => setProfessionalForm(prev => ({ ...prev, hospital_name: e.target.value }))}
+                        className="w-48 h-8 text-sm"
+                        placeholder="Enter hospital/clinic"
+                      />
+                    ) : (
+                      <span className="font-medium text-gray-900">
+                        {doctorProfile.hospital_name || 'Not provided'}
+                      </span>
+                    )}
                   </div>
 
-                  <div className="flex items-center justify-between py-2">
+                  {/* Verification Status - Read Only */}
+                  <div className="flex items-center justify-between py-2 border-b border-gray-100">
                     <div className="flex items-center gap-2 text-gray-600">
                       <Shield className="h-4 w-4" />
                       <span className="text-sm">Verification Status</span>
@@ -729,6 +854,35 @@ export default function ProfilePage() {
                       {doctorProfile.verification_status.charAt(0).toUpperCase() + doctorProfile.verification_status.slice(1)}
                     </Badge>
                   </div>
+
+                  {/* Verified Date - Show only if approved */}
+                  {doctorProfile.verification_status === 'approved' && doctorProfile.verified_at && (
+                    <div className="flex items-center justify-between py-2">
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <Calendar className="h-4 w-4" />
+                        <span className="text-sm">Verified On</span>
+                      </div>
+                      <span className="font-medium text-gray-900">
+                        {format(new Date(doctorProfile.verified_at), 'MMMM d, yyyy')}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Pending/Rejected message */}
+                  {doctorProfile.verification_status === 'pending' && (
+                    <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                      <p className="text-sm text-amber-700">
+                        Your verification is pending. An admin will review your credentials soon.
+                      </p>
+                    </div>
+                  )}
+                  {doctorProfile.verification_status === 'rejected' && (
+                    <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                      <p className="text-sm text-red-700">
+                        Your verification was rejected. Please contact support for more information.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

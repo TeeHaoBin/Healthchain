@@ -307,6 +307,30 @@ export async function getDoctorProfileByWallet(walletAddress: string): Promise<D
   }
 }
 
+/**
+ * Update doctor profile (specialization and hospital_name only)
+ * Note: license_number changes require admin re-verification
+ */
+export async function updateDoctorProfile(
+  userId: string,
+  updates: Partial<Pick<DoctorProfile, 'specialization' | 'hospital_name'>>
+): Promise<DoctorProfile | null> {
+  try {
+    const { data, error } = await supabase
+      .from('doctor_profiles')
+      .update(updates)
+      .eq('user_id', userId)
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  } catch (error) {
+    console.error('Error updating doctor profile:', error)
+    return null
+  }
+}
+
 // Patient Profile Management
 export async function createPatientProfile(profileData: {
   user_id: string
