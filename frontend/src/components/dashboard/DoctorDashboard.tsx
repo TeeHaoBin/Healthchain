@@ -125,8 +125,17 @@ export default function DoctorDashboard() {
       setViewingId(doc.id)
       const blob = await fileUploadService.retrieveFile(doc.id)
       const url = URL.createObjectURL(blob)
-      window.open(url, '_blank')
-      setTimeout(() => URL.revokeObjectURL(url), 1000)
+
+      // Use anchor element for more reliable file handling
+      const a = document.createElement('a')
+      a.href = url
+      a.target = '_blank'
+      a.download = doc.title || 'health-document'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+
+      setTimeout(() => URL.revokeObjectURL(url), 60000)
     } catch (err) {
       console.error('Failed to view document:', err)
       toast({
@@ -298,7 +307,7 @@ export default function DoctorDashboard() {
             ) : (
               <div className="space-y-3">
                 {recentDocsList.map(doc => {
-                  const fileType = getFileTypeBadge(doc.mimeType)
+                  const fileType = getFileTypeBadge(doc.fileType)
                   return (
                     <div
                       key={doc.id}

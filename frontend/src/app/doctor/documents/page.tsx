@@ -90,7 +90,15 @@ export default function DoctorDocumentsPage() {
 
             // Create download/view URL
             const url = URL.createObjectURL(blob)
-            window.open(url, '_blank')
+
+            // Use anchor element for more reliable file handling
+            const a = document.createElement('a')
+            a.href = url
+            a.target = '_blank'
+            a.download = file.title || 'health-document'
+            document.body.appendChild(a)
+            a.click()
+            document.body.removeChild(a)
 
             // Cleanup after a delay
             setTimeout(() => URL.revokeObjectURL(url), 60000)

@@ -133,12 +133,22 @@ export default function PatientRecordsPage() {
       setViewingId(record.id)
       const blob = await fileUploadService.retrieveFile(record.id)
 
-      // Create object URL and open in new tab
+      // Create object URL
       const url = URL.createObjectURL(blob)
-      window.open(url, '_blank')
 
-      // Clean up object URL after a delay to allow browser to load it
-      setTimeout(() => URL.revokeObjectURL(url), 1000)
+      // Use anchor element for more reliable file handling
+      const a = document.createElement('a')
+      a.href = url
+      a.target = '_blank'
+      // Set download attribute with original filename for better UX
+      // This also helps browsers handle the file correctly
+      a.download = record.title || 'health-record'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+
+      // Clean up object URL after a longer delay to ensure download completes
+      setTimeout(() => URL.revokeObjectURL(url), 60000) // 60 seconds
     } catch (err) {
       console.error("Failed to view record:", err)
       alert("Failed to decrypt and view record. Please try again.")
