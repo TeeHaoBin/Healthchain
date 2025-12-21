@@ -84,9 +84,13 @@ export default function PatientDashboard() {
     r => r.source_status === 'uploaded' && r.patient_status === 'pending'
   ).length
   const totalPendingRequests = pendingDirectRequests + pendingTransferRequests
-  const activeDoctors = new Set(
-    accessRequests.filter(r => r.status === 'approved').map(r => r.doctor_wallet)
-  ).size
+  // Count all doctors with access: direct requests + transfer requests
+  const activeDoctors = new Set([
+    // Doctors from approved direct access requests
+    ...accessRequests.filter(r => r.status === 'approved').map(r => r.doctor_wallet),
+    // Doctors from approved transfer requests (requesting doctor gains access)
+    ...transferRequests.filter(r => r.patient_status === 'approved').map(r => r.requesting_doctor_wallet)
+  ]).size
 
   // Recent activity (requests and records from last 7 days)
   const sevenDaysAgo = new Date()
