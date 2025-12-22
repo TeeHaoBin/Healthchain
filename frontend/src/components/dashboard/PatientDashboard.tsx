@@ -118,17 +118,8 @@ export default function PatientDashboard() {
       setViewingId(record.id)
       const blob = await fileUploadService.retrieveFile(record.id)
       const url = URL.createObjectURL(blob)
-
-      // Use anchor element for more reliable file handling
-      const a = document.createElement('a')
-      a.href = url
-      a.target = '_blank'
-      a.download = record.title || 'health-record'
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-
-      setTimeout(() => URL.revokeObjectURL(url), 60000)
+      window.open(url, '_blank')
+      setTimeout(() => URL.revokeObjectURL(url), 10000) // 10 seconds
     } catch (err) {
       console.error('Failed to view record:', err)
       toast({
