@@ -1,3 +1,4 @@
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ArrowRight, CheckCircle } from "lucide-react"
@@ -47,11 +48,15 @@ export function HeroSection() {
           <div className="flex items-center justify-center">
             <div className="relative w-full max-w-2xl">
               <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-green-400 rounded-lg blur-3xl opacity-30"></div>
-              <div className="relative w-full aspect-[3/2] bg-gradient-to-br from-blue-100 to-green-100 rounded-lg shadow-2xl flex items-center justify-center">
-                <div className="text-gray-500 text-center">
-                  <div className="text-3xl sm:text-4xl lg:text-5xl mb-2">🏥</div>
-                  <div className="text-xs sm:text-sm lg:text-base">Healthcare Dashboard</div>
-                </div>
+              <div className="relative w-full rounded-lg shadow-2xl overflow-hidden border border-gray-200">
+                <Image
+                  src="/images/hero-dashboard.png"
+                  alt="HealthChain Patient Dashboard - Secure health records management"
+                  width={1200}
+                  height={800}
+                  className="w-full h-auto"
+                  priority
+                />
               </div>
             </div>
           </div>

@@ -12,6 +12,9 @@ const nextConfig: NextConfig = {
       {
         pathname: '/placeholder.svg**',
       },
+      {
+        pathname: '/images/**',
+      },
     ],
   },
 };

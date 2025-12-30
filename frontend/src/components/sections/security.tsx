@@ -1,3 +1,4 @@
+import Image from "next/image"
 import { Badge } from "@/components/ui/badge"
 import { CheckCircle } from "lucide-react"
 
@@ -51,11 +52,14 @@ export function SecuritySection() {
           <div className="flex items-center justify-center">
             <div className="relative w-full max-w-2xl">
               <div className="absolute inset-0 bg-gradient-to-r from-green-400 to-blue-400 rounded-lg blur-3xl opacity-30"></div>
-              <div className="relative w-full aspect-[3/2] bg-gradient-to-br from-green-100 to-blue-100 rounded-lg shadow-2xl flex items-center justify-center">
-                <div className="text-gray-500 text-center">
-                  <div className="text-3xl sm:text-4xl lg:text-5xl mb-2">🔒</div>
-                  <div className="text-xs sm:text-sm lg:text-base">Security Dashboard</div>
-                </div>
+              <div className="relative w-full rounded-lg shadow-2xl overflow-hidden border border-gray-200">
+                <Image
+                  src="/images/security-upload.png"
+                  alt="HealthChain Secure Upload - End-to-end encryption with Lit Protocol"
+                  width={1200}
+                  height={800}
+                  className="w-full h-auto"
+                />
               </div>
             </div>
           </div>
