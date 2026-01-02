@@ -4,7 +4,7 @@
  */
 
 import React from 'react'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom'
 
 // Mock wagmi
@@ -41,7 +41,7 @@ jest.mock('@/lib/validation', () => ({
 
 // Mock UI components
 jest.mock('@/components/ui/button', () => ({
-    Button: ({ children, disabled, onClick }: any) => (
+    Button: ({ children, disabled, onClick }: { children: React.ReactNode; disabled?: boolean; onClick?: () => void }) => (
         <button disabled={disabled} onClick={onClick} data-testid="button">
             {children}
         </button>
@@ -49,7 +49,7 @@ jest.mock('@/components/ui/button', () => ({
 }))
 
 jest.mock('@/components/ui/card', () => ({
-    Card: ({ children, className }: any) => <div className={className}>{children}</div>,
+    Card: ({ children, className }: { children: React.ReactNode; className?: string }) => <div className={className}>{children}</div>,
 }))
 
 // Import component after mocks

@@ -23,7 +23,7 @@ jest.mock('@rainbow-me/rainbowkit', () => ({
 
 // Mock UI components
 jest.mock('@/components/ui/button', () => ({
-    Button: ({ children, disabled, onClick, className }: any) => (
+    Button: ({ children, disabled, onClick, className }: { children: React.ReactNode; disabled?: boolean; onClick?: () => void; className?: string }) => (
         <button disabled={disabled} onClick={onClick} className={className} data-testid="button">
             {children}
         </button>

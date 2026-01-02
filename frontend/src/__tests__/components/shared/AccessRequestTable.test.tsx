@@ -8,17 +8,17 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import '@testing-library/jest-dom'
 
 // Mock next/link
-jest.mock('next/link', () => {
-    return ({ children, href }: any) => <a href={href}>{children}</a>
-})
+const MockLink = ({ children, href }: { children: React.ReactNode; href: string }) => <a href={href}>{children}</a>
+MockLink.displayName = 'MockLink'
+jest.mock('next/link', () => MockLink)
 
 // Mock UI components
 jest.mock('@/components/ui/card', () => ({
-    Card: ({ children, className }: any) => <div className={className}>{children}</div>,
+    Card: ({ children, className }: { children: React.ReactNode; className?: string }) => <div className={className}>{children}</div>,
 }))
 
 jest.mock('@/components/ui/button', () => ({
-    Button: ({ children, disabled, onClick, size, variant, className }: any) => (
+    Button: ({ children, disabled, onClick, className }: { children: React.ReactNode; disabled?: boolean; onClick?: () => void; className?: string }) => (
         <button disabled={disabled} onClick={onClick} className={className}>
             {children}
         </button>
@@ -26,28 +26,28 @@ jest.mock('@/components/ui/button', () => ({
 }))
 
 jest.mock('@/components/ui/badge', () => ({
-    Badge: ({ children, className }: any) => <span className={className}>{children}</span>,
+    Badge: ({ children, className }: { children: React.ReactNode; className?: string }) => <span className={className}>{children}</span>,
 }))
 
 jest.mock('@/components/ui/input', () => ({
-    Input: (props: any) => <input {...props} />,
+    Input: (props: React.InputHTMLAttributes<HTMLInputElement>) => <input {...props} />,
 }))
 
 jest.mock('@/components/ui/textarea', () => ({
-    Textarea: (props: any) => <textarea {...props} />,
+    Textarea: (props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => <textarea {...props} />,
 }))
 
 jest.mock('@/components/ui/tabs', () => ({
-    Tabs: ({ children, value, onValueChange }: any) => <div data-value={value}>{children}</div>,
-    TabsList: ({ children }: any) => <div>{children}</div>,
-    TabsTrigger: ({ children, value }: any) => <button data-value={value}>{children}</button>,
+    Tabs: ({ children, value }: { children: React.ReactNode; value: string }) => <div data-value={value}>{children}</div>,
+    TabsList: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    TabsTrigger: ({ children, value }: { children: React.ReactNode; value: string }) => <button data-value={value}>{children}</button>,
 }))
 
 jest.mock('@/components/ui/tooltip', () => ({
-    Tooltip: ({ children }: any) => <div>{children}</div>,
-    TooltipContent: ({ children }: any) => <div>{children}</div>,
-    TooltipProvider: ({ children }: any) => <div>{children}</div>,
-    TooltipTrigger: ({ children }: any) => <div>{children}</div>,
+    Tooltip: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    TooltipContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    TooltipProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    TooltipTrigger: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
 // Import component after mocks

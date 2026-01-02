@@ -21,7 +21,7 @@ jest.mock('@/lib/supabase/client', () => ({
 
 // Mock UI components
 jest.mock('@/components/ui/button', () => ({
-    Button: ({ children, disabled, onClick, type }: any) => (
+    Button: ({ children, disabled, onClick, type }: { children: React.ReactNode; disabled?: boolean; onClick?: () => void; type?: 'button' | 'submit' | 'reset' }) => (
         <button disabled={disabled} onClick={onClick} type={type} data-testid="button">
             {children}
         </button>
@@ -29,23 +29,23 @@ jest.mock('@/components/ui/button', () => ({
 }))
 
 jest.mock('@/components/ui/card', () => ({
-    Card: ({ children, className }: any) => <div className={className}>{children}</div>,
+    Card: ({ children, className }: { children: React.ReactNode; className?: string }) => <div className={className}>{children}</div>,
 }))
 
 jest.mock('@/components/ui/label', () => ({
-    Label: ({ children, htmlFor }: any) => <label htmlFor={htmlFor}>{children}</label>,
+    Label: ({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) => <label htmlFor={htmlFor}>{children}</label>,
 }))
 
 jest.mock('@/components/ui/textarea', () => ({
-    Textarea: (props: any) => <textarea {...props} data-testid="textarea" />,
+    Textarea: (props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => <textarea {...props} data-testid="textarea" />,
 }))
 
 jest.mock('@/components/ui/select', () => ({
-    Select: ({ children, value, onValueChange }: any) => <div data-value={value}>{children}</div>,
-    SelectContent: ({ children }: any) => <div>{children}</div>,
-    SelectItem: ({ children, value }: any) => <option value={value}>{children}</option>,
-    SelectTrigger: ({ children }: any) => <div>{children}</div>,
-    SelectValue: ({ placeholder }: any) => <span>{placeholder}</span>,
+    Select: ({ children, value }: { children: React.ReactNode; value?: string }) => <div data-value={value}>{children}</div>,
+    SelectContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    SelectItem: ({ children, value }: { children: React.ReactNode; value: string }) => <option value={value}>{children}</option>,
+    SelectTrigger: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    SelectValue: ({ placeholder }: { placeholder?: string }) => <span>{placeholder}</span>,
 }))
 
 // Import component after mocks
@@ -66,7 +66,7 @@ describe('AccessRequestForm Component', () => {
         file_size: 1024,
         is_encrypted: true,
         tags: ['medical', 'report'],
-    } as any
+    }
 
     const mockDoctorWallet = '0x742d35Cc6634C0532925a3b844Bc454e4438f44e'
     const mockOnCancel = jest.fn()

@@ -51,7 +51,7 @@ jest.mock('@/lib/lit/client', () => ({
     },
 }));
 
-import { renderHook as _renderHook, act as _act, waitFor as _waitFor } from '@testing-library/react';
+// Note: renderHook, act, waitFor available from @testing-library/react if needed
 import { useAccount, useDisconnect } from 'wagmi';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
