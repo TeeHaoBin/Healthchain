@@ -51,9 +51,12 @@ jest.mock('@/lib/lit/client', () => ({
     },
 }));
 
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook as _renderHook, act as _act, waitFor as _waitFor } from '@testing-library/react';
 import { useAccount, useDisconnect } from 'wagmi';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase/client';
 import { getUserByWallet } from '@/lib/supabase/helpers';
+import { litClient } from '@/lib/lit/client';
 
 describe('React Hooks Module', () => {
 
@@ -174,23 +177,18 @@ describe('React Hooks Module', () => {
         });
 
         test('2.3 Logout calls Supabase signOut', async () => {
-            const { supabase } = require('@/lib/supabase/client');
-
             await supabase.auth.signOut();
 
             expect(supabase.auth.signOut).toHaveBeenCalled();
         });
 
         test('2.4 Logout disconnects Lit client', async () => {
-            const { litClient } = require('@/lib/lit/client');
-
             await litClient.disconnect();
 
             expect(litClient.disconnect).toHaveBeenCalled();
         });
 
         test('2.5 Logout redirects to home page', () => {
-            const { useRouter } = require('next/navigation');
             const router = useRouter();
 
             router.push('/');
